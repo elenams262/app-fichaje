@@ -1,0 +1,22 @@
+{
+  "name": "MSG Gasóleos — Fichaje",
+  "short_name": "Fichaje MSG",
+  "description": "Sistema de control de presencia para Martínez Sánchez Gasóleos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1724",
+  "theme_color": "#0f1724",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

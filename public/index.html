@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1724" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Sistema de fichaje para Martínez Sánchez Gasóleos" />
+  <title>Fichaje | MSG Gasóleos</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ===== PANTALLA DE CARGA ===== -->
+  <div id="splash" class="splash">
+    <div class="splash-content">
+      <div class="splash-logo">
+        <div class="logo-icon">⛽</div>
+        <div class="logo-text">
+          <span class="logo-main">MSG</span>
+          <span class="logo-sub">Gasóleos</span>
+        </div>
+      </div>
+      <div class="splash-spinner"></div>
+    </div>
+  </div>
+
+  <!-- ===== APP PRINCIPAL ===== -->
+  <div id="app" class="app hidden">
+
+    <!-- HEADER -->
+    <header class="header" id="app-header">
+      <div class="header-left">
+        <button class="btn-icon" id="btn-sidebar" aria-label="Menú">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="header-brand">
+          <span>⛽</span>
+          <span class="header-title" id="header-title">MSG Gasóleos</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="header-user" id="header-user"></span>
+        <button class="btn-icon btn-logout" id="btn-logout" title="Cerrar sesión">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- SIDEBAR (Admin) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <span class="sidebar-icon">⛽</span>
+          <div>
+            <div class="sidebar-name">MSG Gasóleos</div>
+            <div class="sidebar-role">Panel Administrador</div>
+          </div>
+        </div>
+        <button class="btn-icon sidebar-close" id="sidebar-close">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="admin-dashboard" id="nav-dashboard">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item" data-view="admin-centros" id="nav-centros">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          Centros de trabajo
+        </a>
+        <a href="#" class="nav-item" data-view="admin-empleados" id="nav-empleados">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Empleados
+        </a>
+        <a href="#" class="nav-item" data-view="admin-horarios" id="nav-horarios">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Horarios
+        </a>
+        <a href="#" class="nav-item" data-view="admin-fichajes" id="nav-fichajes">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Registros de fichaje
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout-full" id="btn-logout-sidebar">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content" id="main-content">
+
+      <!-- ===== LOGIN ===== -->
+      <div id="view-login" class="view active">
+        <div class="login-container">
+          <div class="login-logo">
+            <div class="login-icon-wrap">⛽</div>
+            <h1 class="login-title">Martínez Sánchez<br/><span>Gasóleos</span></h1>
+            <p class="login-subtitle">Sistema de control de presencia</p>
+          </div>
+          <div class="login-cards">
+            <button class="login-card" id="btn-login-admin">
+              <div class="login-card-icon admin">
+                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
+              </div>
+              <div class="login-card-text">
+                <strong>Administrador</strong>
+                <span>Acceso con CIF de empresa</span>
+              </div>
+              <svg class="chevron" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button class="login-card" id="btn-login-empleado">
+              <div class="login-card-icon empleado">
+                <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="login-card-text">
+                <strong>Empleado</strong>
+                <span>Acceso con DNI/NIE</span>
+              </div>
+              <svg class="chevron" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== FORMULARIO LOGIN ADMIN ===== -->
+      <div id="view-login-admin" class="view">
+        <div class="form-container">
+          <button class="btn-back" id="back-from-admin">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </button>
+          <div class="form-header">
+            <div class="form-icon admin">
+              <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
+            </div>
+            <h2>Acceso Administrador</h2>
+            <p>Introduce el CIF de la empresa y tu contraseña</p>
+          </div>
+          <form id="form-login-admin" class="form">
+            <div class="form-group">
+              <label for="admin-cif">CIF de la empresa</label>
+              <input type="text" id="admin-cif" placeholder="Ej: B12345678" autocomplete="username" required />
+            </div>
+            <div class="form-group">
+              <label for="admin-password">Contraseña</label>
+              <div class="input-password">
+                <input type="password" id="admin-password" placeholder="Tu contraseña" autocomplete="current-password" required />
+                <button type="button" class="toggle-password" data-target="admin-password">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-error hidden" id="error-admin"></div>
+            <button type="submit" class="btn-primary" id="btn-submit-admin">
+              <span>Entrar</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== FORMULARIO LOGIN EMPLEADO ===== -->
+      <div id="view-login-empleado" class="view">
+        <div class="form-container">
+          <button class="btn-back" id="back-from-empleado">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </button>
+          <div class="form-header">
+            <div class="form-icon empleado">
+              <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <h2>Acceso Empleado</h2>
+            <p>Introduce tu DNI/NIE y contraseña</p>
+          </div>
+          <form id="form-login-empleado" class="form">
+            <div class="form-group">
+              <label for="emp-dni">DNI / NIE</label>
+              <input type="text" id="emp-dni" placeholder="Ej: 12345678A" autocomplete="username" required />
+            </div>
+            <div class="form-group">
+              <label for="emp-password">Contraseña</label>
+              <div class="input-password">
+                <input type="password" id="emp-password" placeholder="Tu contraseña" autocomplete="current-password" required />
+                <button type="button" class="toggle-password" data-target="emp-password">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-error hidden" id="error-empleado"></div>
+            <button type="submit" class="btn-primary" id="btn-submit-empleado">
+              <span>Entrar</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== PANEL EMPLEADO ===== -->
+      <div id="view-empleado" class="view">
+        <!-- Tab de fichar -->
+        <div id="tab-fichar" class="emp-tab active">
+          <div class="fichar-container">
+            <div class="fichar-info">
+              <div class="fichar-greeting" id="fichar-greeting">Buenos días</div>
+              <div class="fichar-name" id="fichar-name">Empleado</div>
+              <div class="fichar-centro" id="fichar-centro">Centro</div>
+              <div class="fichar-puesto" id="fichar-puesto">Puesto</div>
+            </div>
+            <div class="fichar-clock" id="fichar-clock">00:00:00</div>
+            <div class="fichar-date" id="fichar-date"></div>
+            <div class="fichar-status-badge" id="fichar-status-badge">
+              <div class="status-dot"></div>
+              <span id="fichar-status-text">Cargando...</span>
+            </div>
+            <button class="btn-fichar" id="btn-fichar" disabled>
+              <div class="btn-fichar-inner">
+                <svg class="btn-fichar-icon" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span id="btn-fichar-text">Cargando...</span>
+              </div>
+            </button>
+            <div class="fichajes-hoy" id="fichajes-hoy"></div>
+          </div>
+        </div>
+        <!-- Tab de historial -->
+        <div id="tab-historial" class="emp-tab">
+          <div class="tab-content-pad">
+            <div class="section-header">
+              <h3>Mi historial</h3>
+              <div class="filter-group">
+                <select id="hist-mes" class="select-sm"></select>
+                <select id="hist-anio" class="select-sm"></select>
+                <button class="btn-sm" id="btn-filtrar-hist">Filtrar</button>
+              </div>
+            </div>
+            <div id="historial-list" class="historial-list"></div>
+          </div>
+        </div>
+        <!-- Tab de horario -->
+        <div id="tab-horario" class="emp-tab">
+          <div class="tab-content-pad">
+            <div class="section-header">
+              <h3>Mi horario</h3>
+            </div>
+            <div id="horario-display" class="horario-display"></div>
+          </div>
+        </div>
+        <!-- Bottom nav empleado -->
+        <nav class="bottom-nav">
+          <button class="bottom-nav-item active" data-tab="tab-fichar" id="bnav-fichar">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Fichar</span>
+          </button>
+          <button class="bottom-nav-item" data-tab="tab-historial" id="bnav-historial">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Historial</span>
+          </button>
+          <button class="bottom-nav-item" data-tab="tab-horario" id="bnav-horario">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Horario</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- ===== PANEL ADMINISTRADOR ===== -->
+      <div id="view-admin" class="view admin-view">
+
+        <!-- Dashboard -->
+        <div id="admin-dashboard" class="admin-section active">
+          <div class="page-header">
+            <h2>Dashboard</h2>
+            <p id="dashboard-fecha"></p>
+          </div>
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon blue"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div class="stat-info">
+                <div class="stat-value" id="stat-empleados">—</div>
+                <div class="stat-label">Empleados activos</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+              <div class="stat-info">
+                <div class="stat-value" id="stat-centros">—</div>
+                <div class="stat-label">Centros activos</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="stat-info">
+                <div class="stat-value" id="stat-entradas-hoy">—</div>
+                <div class="stat-label">Entradas hoy</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+              <div class="stat-info">
+                <div class="stat-value" id="stat-salidas-hoy">—</div>
+                <div class="stat-label">Salidas hoy</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Últimos fichajes del día</h3>
+            </div>
+            <div id="dashboard-fichajes" class="card-body"></div>
+          </div>
+        </div>
+
+        <!-- Centros -->
+        <div id="admin-centros" class="admin-section">
+          <div class="page-header">
+            <h2>Centros de trabajo</h2>
+            <button class="btn-primary btn-sm" id="btn-nuevo-centro">+ Nuevo centro</button>
+          </div>
+          <div id="centros-list" class="cards-grid"></div>
+        </div>
+
+        <!-- Empleados -->
+        <div id="admin-empleados" class="admin-section">
+          <div class="page-header">
+            <h2>Empleados</h2>
+            <button class="btn-primary btn-sm" id="btn-nuevo-empleado">+ Nuevo empleado</button>
+          </div>
+          <div class="filter-bar">
+            <input type="text" id="filtro-empleado" placeholder="Buscar por nombre o DNI..." class="input-search" />
+            <select id="filtro-centro" class="select-sm">
+              <option value="">Todos los centros</option>
+            </select>
+          </div>
+          <div id="empleados-list" class="table-container"></div>
+        </div>
+
+        <!-- Horarios -->
+        <div id="admin-horarios" class="admin-section">
+          <div class="page-header">
+            <h2>Horarios</h2>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Empleado</label>
+                  <select id="horario-empleado-sel" class="select-full"></select>
+                </div>
+                <div class="form-group">
+                  <label>Mes</label>
+                  <select id="horario-mes-sel" class="select-full"></select>
+                </div>
+                <div class="form-group">
+                  <label>Año</label>
+                  <select id="horario-anio-sel" class="select-full"></select>
+                </div>
+                <div class="form-group form-group-btn">
+                  <button class="btn-primary" id="btn-cargar-horario">Cargar</button>
+                </div>
+              </div>
+              <div id="horario-editor" class="horario-editor hidden"></div>
+              <div class="form-actions hidden" id="horario-actions">
+                <button class="btn-primary" id="btn-guardar-horario">💾 Guardar horario</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fichajes Admin -->
+        <div id="admin-fichajes" class="admin-section">
+          <div class="page-header">
+            <h2>Registros de fichaje</h2>
+            <div class="header-actions">
+              <button class="btn-outline btn-sm" id="btn-export-excel">📊 Excel</button>
+              <button class="btn-outline btn-sm" id="btn-export-pdf">📄 PDF</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="filter-bar form-row">
+                <div class="form-group">
+                  <label>Empleado</label>
+                  <select id="f-empleado" class="select-full"><option value="">Todos</option></select>
+                </div>
+                <div class="form-group">
+                  <label>Centro</label>
+                  <select id="f-centro" class="select-full"><option value="">Todos</option></select>
+                </div>
+                <div class="form-group">
+                  <label>Desde</label>
+                  <input type="date" id="f-desde" class="select-full" />
+                </div>
+                <div class="form-group">
+                  <label>Hasta</label>
+                  <input type="date" id="f-hasta" class="select-full" />
+                </div>
+                <div class="form-group form-group-btn">
+                  <button class="btn-primary" id="btn-filtrar-fichajes">Filtrar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="fichajes-admin-list" class="table-container"></div>
+        </div>
+
+      </div>
+      <!-- fin view-admin -->
+
+    </main>
+  </div>
+  <!-- fin app -->
+
+  <!-- ===== MODAL ===== -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Título</h3>
+        <button class="btn-icon modal-close" id="modal-close">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/empleado.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
