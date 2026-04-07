@@ -285,115 +285,227 @@ const Admin = (() => {
     document.getElementById('btn-nuevo-empleado').onclick = () => modalNuevoEmpleado();
   };
 
-  const getFormEmpleado = (emp = null) => {
+  const getFormEmpleado = (emp = null, contrato = null) => {
     const centrosOpts = centros.map(c =>
-      `<option value="${c.id}" ${emp?.centro_id === c.id ? 'selected' : ''}>${c.nombre}</option>`
+      `<option value="${c.id}" ${(emp?.centro_id === c.id || contrato?.centro_id === c.id) ? 'selected' : ''}>${c.nombre}</option>`
     ).join('');
-    return `<form id="form-empleado" class="form">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre *</label>
-          <input type="text" id="emp-nombre" value="${emp?.nombre||''}" required placeholder="Nombre" />
+
+    return `
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab-target="tab-personal">👤 Datos personales</button>
+      <button class="modal-tab" data-tab-target="tab-contrato">📄 Contrato</button>
+    </div>
+
+    <!-- TAB 1: DATOS PERSONALES -->
+    <div id="tab-personal" class="modal-tab-panel active">
+      <form id="form-empleado" class="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" id="emp-nombre" value="${emp?.nombre||''}" required placeholder="Nombre" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos *</label>
+            <input type="text" id="emp-apellidos" value="${emp?.apellidos||''}" required placeholder="Apellidos" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Apellidos *</label>
-          <input type="text" id="emp-apellidos" value="${emp?.apellidos||''}" required placeholder="Apellidos" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>DNI / NIE *</label>
+            <input type="text" id="emp-dni-nie" value="${emp?.dni_nie||''}" ${emp?'readonly':''} required placeholder="12345678A" />
+          </div>
+          <div class="form-group">
+            <label>Nº Seguridad Social</label>
+            <input type="text" id="emp-nss" value="${emp?.nss||''}" placeholder="Ej: 28012345678" />
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>DNI / NIE *</label>
-          <input type="text" id="emp-dni-nie" value="${emp?.dni_nie||''}" ${emp?'readonly':''} required placeholder="12345678A" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contraseña ${emp?'(vacío = no cambiar)':'*'}</label>
+            <input type="password" id="emp-pwd" placeholder="${emp?'Nueva contraseña (opcional)':'Contraseña inicial'}" ${!emp?'required':''} />
+          </div>
+          <div class="form-group">
+            <label>Móvil</label>
+            <input type="tel" id="emp-movil" value="${emp?.movil||''}" placeholder="6XX XXX XXX" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Contraseña ${emp?'(dejar vacío = no cambiar)':'*'}</label>
-          <input type="password" id="emp-pwd" placeholder="${emp?'Nueva contraseña (opcional)':'Contraseña inicial'}" ${!emp?'required':''} />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="emp-email" value="${emp?.email||''}" placeholder="correo@ejemplo.com" />
+          </div>
+          <div class="form-group">
+            <label>Centro de trabajo</label>
+            <select id="emp-centro" class="select-full">
+              <option value="">Sin centro</option>${centrosOpts}
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Móvil</label>
-          <input type="tel" id="emp-movil" value="${emp?.movil||''}" placeholder="6XX XXX XXX" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Puesto de trabajo</label>
+            <input type="text" id="emp-puesto" value="${emp?.puesto||''}" placeholder="Ej: Expendedor, Encargado..." />
+          </div>
+          ${emp ? `<div class="form-group">
+            <label>Estado</label>
+            <select id="emp-activo" class="select-full">
+              <option value="true" ${emp.activo?'selected':''}>Activo</option>
+              <option value="false" ${!emp.activo?'selected':''}>Inactivo</option>
+            </select>
+          </div>` : '<div class="form-group"></div>'}
         </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="emp-email" value="${emp?.email||''}" placeholder="correo@ejemplo.com" />
+      </form>
+    </div>
+
+    <!-- TAB 2: CONTRATO -->
+    <div id="tab-contrato" class="modal-tab-panel">
+      <form id="form-contrato" class="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de contrato</label>
+            <select id="ct-tipo" class="select-full">
+              <option value="">Seleccionar...</option>
+              <option value="Indefinido" ${contrato?.tipo_contrato==='Indefinido'?'selected':''}>Indefinido</option>
+              <option value="Temporal" ${contrato?.tipo_contrato==='Temporal'?'selected':''}>Temporal</option>
+              <option value="Temporal por obra" ${contrato?.tipo_contrato==='Temporal por obra'?'selected':''}>Temporal por obra</option>
+              <option value="Prácticas" ${contrato?.tipo_contrato==='Prácticas'?'selected':''}>Prácticas</option>
+              <option value="Formación" ${contrato?.tipo_contrato==='Formación'?'selected':''}>Formación</option>
+              <option value="Relevo" ${contrato?.tipo_contrato==='Relevo'?'selected':''}>Relevo</option>
+              <option value="Otro" ${contrato?.tipo_contrato==='Otro'?'selected':''}>Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Centro (contrato)</label>
+            <select id="ct-centro" class="select-full">
+              <option value="">Sin asignar</option>${centrosOpts}
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Centro de trabajo</label>
-          <select id="emp-centro" class="select-full">
-            <option value="">Sin centro</option>${centrosOpts}
-          </select>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Categoría profesional</label>
+            <input type="text" id="ct-categoria" value="${contrato?.categoria_profesional||''}" placeholder="Ej: Técnico Nivel II" />
+          </div>
+          <div class="form-group">
+            <label>Convenio colectivo</label>
+            <input type="text" id="ct-convenio" value="${contrato?.convenio||''}" placeholder="Ej: Convenio estaciones de servicio" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Puesto de trabajo</label>
-          <input type="text" id="emp-puesto" value="${emp?.puesto||''}" placeholder="Ej: Expendedor, Encargado..." />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de jornada</label>
+            <select id="ct-jornada" class="select-full">
+              <option value="">Seleccionar...</option>
+              <option value="Completa" ${contrato?.tipo_jornada==='Completa'?'selected':''}>Completa</option>
+              <option value="Parcial" ${contrato?.tipo_jornada==='Parcial'?'selected':''}>Parcial</option>
+              <option value="Reducida" ${contrato?.tipo_jornada==='Reducida'?'selected':''}>Reducida</option>
+              <option value="Nocturna" ${contrato?.tipo_jornada==='Nocturna'?'selected':''}>Nocturna</option>
+              <option value="Turnos" ${contrato?.tipo_jornada==='Turnos'?'selected':''}>Turnos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Horas semanales</label>
+            <input type="number" id="ct-horas" value="${contrato?.horas_semanales||''}" placeholder="Ej: 40" min="1" max="60" step="0.5" />
+          </div>
         </div>
-      </div>
-      ${emp ? `<div class="form-group">
-        <label>Estado</label>
-        <select id="emp-activo" class="select-full">
-          <option value="true" ${emp.activo?'selected':''}>Activo</option>
-          <option value="false" ${!emp.activo?'selected':''}>Inactivo</option>
-        </select>
-      </div>` : ''}
-    </form>`;
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de inicio</label>
+            <input type="date" id="ct-inicio" value="${contrato?.fecha_inicio ? contrato.fecha_inicio.split('T')[0] : ''}" />
+          </div>
+          <div class="form-group">
+            <label>Fecha de fin <span style="color:var(--text-dim);font-weight:400">(vacío = indefinido)</span></label>
+            <input type="date" id="ct-fin" value="${contrato?.fecha_fin ? contrato.fecha_fin.split('T')[0] : ''}" />
+          </div>
+        </div>
+      </form>
+    </div>`;
+  };
+
+  // Leer los datos del formulario de empleado
+  const leerDatosEmpleado = (esEdicion) => ({
+    nombre: document.getElementById('emp-nombre').value.trim(),
+    apellidos: document.getElementById('emp-apellidos').value.trim(),
+    dni_nie: document.getElementById('emp-dni-nie').value.trim(),
+    password: document.getElementById('emp-pwd').value,
+    movil: document.getElementById('emp-movil').value.trim(),
+    email: document.getElementById('emp-email').value.trim(),
+    centro_id: document.getElementById('emp-centro').value || null,
+    puesto: document.getElementById('emp-puesto').value.trim(),
+    nss: document.getElementById('emp-nss').value.trim(),
+    ...(esEdicion ? { activo: document.getElementById('emp-activo').value === 'true' } : {})
+  });
+
+  const leerDatosContrato = (empleadoId) => ({
+    empleado_id: empleadoId,
+    centro_id: document.getElementById('ct-centro').value || null,
+    categoria_profesional: document.getElementById('ct-categoria').value.trim(),
+    convenio: document.getElementById('ct-convenio').value.trim(),
+    tipo_contrato: document.getElementById('ct-tipo').value,
+    tipo_jornada: document.getElementById('ct-jornada').value,
+    horas_semanales: document.getElementById('ct-horas').value || null,
+    fecha_inicio: document.getElementById('ct-inicio').value || null,
+    fecha_fin: document.getElementById('ct-fin').value || null
+  });
+
+  const initModalTabs = () => {
+    document.querySelectorAll('.modal-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tabTarget).classList.add('active');
+      });
+    });
   };
 
   const modalNuevoEmpleado = () => {
     App.openModal('Nuevo empleado', getFormEmpleado(), [
       { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
       { text: 'Crear empleado', cls: 'btn-primary', action: async () => {
-        const payload = {
-          nombre: document.getElementById('emp-nombre').value.trim(),
-          apellidos: document.getElementById('emp-apellidos').value.trim(),
-          dni_nie: document.getElementById('emp-dni-nie').value.trim(),
-          password: document.getElementById('emp-pwd').value,
-          movil: document.getElementById('emp-movil').value.trim(),
-          email: document.getElementById('emp-email').value.trim(),
-          centro_id: document.getElementById('emp-centro').value || null,
-          puesto: document.getElementById('emp-puesto').value.trim()
-        };
+        const payload = leerDatosEmpleado(false);
         if (!payload.nombre || !payload.apellidos || !payload.dni_nie || !payload.password) {
-          App.showToast('Rellena los campos obligatorios', 'error'); return;
+          App.showToast('Rellena nombre, apellidos, DNI y contraseña', 'error'); return;
         }
         try {
-          await API.crearEmpleado(payload);
+          const nuevoEmp = await API.crearEmpleado(payload);
+          // Guardar contrato si se han rellenado datos
+          const ct = leerDatosContrato(nuevoEmp.id);
+          if (ct.tipo_contrato || ct.fecha_inicio || ct.categoria_profesional) {
+            await API.guardarContrato(ct).catch(() => {});
+          }
           App.closeModal();
           App.showToast('Empleado creado correctamente', 'success');
           await cargarEmpleados();
         } catch (e) { App.showToast(e.message, 'error'); }
       }}
     ]);
+    setTimeout(initModalTabs, 50);
   };
 
   const editarEmpleadoModal = async (id) => {
     const emp = empleados.find(e => e.id === id);
     if (!emp) return;
-    App.openModal('Editar empleado', getFormEmpleado(emp), [
+    // Cargar contrato existente en paralelo
+    let contrato = null;
+    try { contrato = await API.getContrato(id); } catch (_) {}
+    App.openModal('Editar empleado', getFormEmpleado(emp, contrato), [
       { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
       { text: 'Guardar cambios', cls: 'btn-primary', action: async () => {
-        const payload = {
-          nombre: document.getElementById('emp-nombre').value.trim(),
-          apellidos: document.getElementById('emp-apellidos').value.trim(),
-          movil: document.getElementById('emp-movil').value.trim(),
-          email: document.getElementById('emp-email').value.trim(),
-          centro_id: document.getElementById('emp-centro').value || null,
-          puesto: document.getElementById('emp-puesto').value.trim(),
-          activo: document.getElementById('emp-activo').value === 'true'
-        };
+        const payload = leerDatosEmpleado(true);
         const pwd = document.getElementById('emp-pwd').value;
         if (pwd) payload.password = pwd;
         try {
           await API.editarEmpleado(id, payload);
+          const ct = leerDatosContrato(id);
+          await API.guardarContrato(ct).catch(() => {});
           App.closeModal();
-          App.showToast('Empleado actualizado', 'success');
+          App.showToast('Empleado actualizado correctamente', 'success');
           await cargarEmpleados();
         } catch (e) { App.showToast(e.message, 'error'); }
       }}
     ]);
+    setTimeout(initModalTabs, 50);
   };
 
   const actualizarSelectEmpleados = () => {

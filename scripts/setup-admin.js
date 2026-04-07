@@ -8,8 +8,8 @@ const pool = require('../database/db');
 // ============================================================
 // CAMBIA ESTOS VALORES POR LOS REALES DE LA EMPRESA
 // ============================================================
-const ADMIN_CIF = 'B12345678';          // ← Pon el CIF real aquí
-const ADMIN_PASSWORD = 'MiPasswordSegura2026!'; // ← Pon la contraseña real aquí
+const ADMIN_CIF = 'B87993648';
+const ADMIN_PASSWORD = 'B87993648+';
 const ADMIN_EMPRESA = 'Martínez Sánchez Gasóleos';
 // ============================================================
 

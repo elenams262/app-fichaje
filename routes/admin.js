@@ -12,7 +12,6 @@ router.use(soloAdmin);
 // CENTROS DE TRABAJO
 // ============================================================
 
-// GET /api/admin/centros — Listar todos los centros
 router.get('/centros', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -29,11 +28,9 @@ router.get('/centros', async (req, res) => {
   }
 });
 
-// POST /api/admin/centros — Crear un centro
 router.post('/centros', async (req, res) => {
   const { nombre, direccion, localidad } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre del centro es obligatorio.' });
-
   try {
     const result = await pool.query(
       'INSERT INTO centros (nombre, direccion, localidad) VALUES ($1, $2, $3) RETURNING *',
@@ -46,13 +43,11 @@ router.post('/centros', async (req, res) => {
   }
 });
 
-// PUT /api/admin/centros/:id — Editar un centro
 router.put('/centros/:id', async (req, res) => {
   const { nombre, direccion, localidad, activo } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4
-       WHERE id=$5 RETURNING *`,
+      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4 WHERE id=$5 RETURNING *`,
       [nombre, direccion, localidad, activo, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Centro no encontrado.' });
@@ -63,7 +58,6 @@ router.put('/centros/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/centros/:id — Eliminar un centro
 router.delete('/centros/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM centros WHERE id=$1', [req.params.id]);
@@ -78,11 +72,10 @@ router.delete('/centros/:id', async (req, res) => {
 // EMPLEADOS
 // ============================================================
 
-// GET /api/admin/empleados — Listar todos los empleados
 router.get('/empleados', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT e.id, e.dni_nie, e.nombre, e.apellidos, e.movil, e.email,
+      SELECT e.id, e.dni_nie, e.nss, e.nombre, e.apellidos, e.movil, e.email,
              e.puesto, e.activo, e.created_at,
              c.id AS centro_id, c.nombre AS centro_nombre
       FROM empleados e
@@ -96,13 +89,11 @@ router.get('/empleados', async (req, res) => {
   }
 });
 
-// GET /api/admin/empleados/centro/:centroId — Empleados de un centro
 router.get('/empleados/centro/:centroId', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT e.id, e.dni_nie, e.nombre, e.apellidos, e.movil, e.email,
-             e.puesto, e.activo, e.created_at,
-             c.nombre AS centro_nombre
+      SELECT e.id, e.dni_nie, e.nss, e.nombre, e.apellidos, e.movil, e.email,
+             e.puesto, e.activo, e.created_at, c.nombre AS centro_nombre
       FROM empleados e
       LEFT JOIN centros c ON e.centro_id = c.id
       WHERE e.centro_id = $1
@@ -115,11 +106,10 @@ router.get('/empleados/centro/:centroId', async (req, res) => {
   }
 });
 
-// GET /api/admin/empleados/:id — Ver un empleado específico
 router.get('/empleados/:id', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT e.id, e.dni_nie, e.nombre, e.apellidos, e.movil, e.email,
+      SELECT e.id, e.dni_nie, e.nss, e.nombre, e.apellidos, e.movil, e.email,
              e.puesto, e.activo, e.created_at,
              c.id AS centro_id, c.nombre AS centro_nombre
       FROM empleados e
@@ -134,27 +124,23 @@ router.get('/empleados/:id', async (req, res) => {
   }
 });
 
-// POST /api/admin/empleados — Crear un empleado
 router.post('/empleados', async (req, res) => {
-  const { dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto } = req.body;
-
+  const { dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss } = req.body;
   if (!dni_nie || !nombre || !apellidos || !password) {
     return res.status(400).json({ error: 'DNI/NIE, nombre, apellidos y contraseña son obligatorios.' });
   }
-
   try {
-    // La contraseña se cifra con bcrypt antes de guardarla
-    // El número 10 es el "coste" del cifrado — más alto = más seguro pero más lento
     const passwordHash = await bcrypt.hash(password, 10);
-
     const result = await pool.query(
-      `INSERT INTO empleados (dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, dni_nie, nombre, apellidos, movil, email, puesto, activo, created_at`,
-      [dni_nie.toUpperCase(), nombre, apellidos, passwordHash, movil || null, email || null, centro_id || null, puesto || null]
+      `INSERT INTO empleados (dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo, created_at`,
+      [dni_nie.toUpperCase(), nombre, apellidos, passwordHash,
+       movil || null, email || null, centro_id || null, puesto || null, nss || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    if (err.code === '23505') { // Error de clave duplicada (DNI ya existe)
+    if (err.code === '23505') {
       return res.status(400).json({ error: 'Ya existe un empleado con ese DNI/NIE.' });
     }
     console.error(err);
@@ -162,27 +148,22 @@ router.post('/empleados', async (req, res) => {
   }
 });
 
-// PUT /api/admin/empleados/:id — Editar un empleado
 router.put('/empleados/:id', async (req, res) => {
-  const { nombre, apellidos, movil, email, centro_id, puesto, activo, password } = req.body;
-
+  const { nombre, apellidos, movil, email, centro_id, puesto, activo, password, nss } = req.body;
   try {
     let query, params;
-
     if (password) {
-      // Si se envía nueva contraseña, la hasheamos
       const passwordHash = await bcrypt.hash(password, 10);
       query = `UPDATE empleados SET nombre=$1, apellidos=$2, movil=$3, email=$4,
-               centro_id=$5, puesto=$6, activo=$7, password=$8 WHERE id=$9
-               RETURNING id, dni_nie, nombre, apellidos, movil, email, puesto, activo`;
-      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, passwordHash, req.params.id];
+               centro_id=$5, puesto=$6, activo=$7, password=$8, nss=$9 WHERE id=$10
+               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo`;
+      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, passwordHash, nss || null, req.params.id];
     } else {
       query = `UPDATE empleados SET nombre=$1, apellidos=$2, movil=$3, email=$4,
-               centro_id=$5, puesto=$6, activo=$7 WHERE id=$8
-               RETURNING id, dni_nie, nombre, apellidos, movil, email, puesto, activo`;
-      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, req.params.id];
+               centro_id=$5, puesto=$6, activo=$7, nss=$8 WHERE id=$9
+               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo`;
+      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, nss || null, req.params.id];
     }
-
     const result = await pool.query(query, params);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Empleado no encontrado.' });
     res.json(result.rows[0]);
@@ -193,10 +174,75 @@ router.put('/empleados/:id', async (req, res) => {
 });
 
 // ============================================================
+// CONTRATOS
+// ============================================================
+
+// GET /api/admin/contratos/:empleadoId — Contrato activo de un empleado
+router.get('/contratos/:empleadoId', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT ct.*, c.nombre AS centro_nombre
+       FROM contratos ct
+       LEFT JOIN centros c ON ct.centro_id = c.id
+       WHERE ct.empleado_id = $1
+       ORDER BY ct.created_at DESC`,
+      [req.params.empleadoId]
+    );
+    // Devolver el más reciente (activo) o null
+    res.json(result.rows[0] || null);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener el contrato.' });
+  }
+});
+
+// POST /api/admin/contratos — Crear o actualizar contrato
+router.post('/contratos', async (req, res) => {
+  const {
+    empleado_id, centro_id, categoria_profesional, convenio,
+    tipo_contrato, tipo_jornada, horas_semanales, fecha_inicio, fecha_fin
+  } = req.body;
+
+  if (!empleado_id) {
+    return res.status(400).json({ error: 'El empleado es obligatorio.' });
+  }
+
+  try {
+    // Desactivar contratos anteriores
+    await pool.query(
+      'UPDATE contratos SET activo = false WHERE empleado_id = $1',
+      [empleado_id]
+    );
+
+    const result = await pool.query(
+      `INSERT INTO contratos
+         (empleado_id, centro_id, categoria_profesional, convenio,
+          tipo_contrato, tipo_jornada, horas_semanales, fecha_inicio, fecha_fin, activo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+       RETURNING *`,
+      [
+        empleado_id,
+        centro_id || null,
+        categoria_profesional || null,
+        convenio || null,
+        tipo_contrato || null,
+        tipo_jornada || null,
+        horas_semanales || null,
+        fecha_inicio || null,
+        fecha_fin || null
+      ]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar el contrato.' });
+  }
+});
+
+// ============================================================
 // HORARIOS
 // ============================================================
 
-// GET /api/admin/horarios/:empleadoId/:mes/:anio — Ver horario de un empleado
 router.get('/horarios/:empleadoId/:mes/:anio', async (req, res) => {
   const { empleadoId, mes, anio } = req.params;
   try {
@@ -204,9 +250,7 @@ router.get('/horarios/:empleadoId/:mes/:anio', async (req, res) => {
       'SELECT * FROM horarios WHERE empleado_id=$1 AND mes=$2 AND anio=$3',
       [empleadoId, parseInt(mes), parseInt(anio)]
     );
-    if (result.rows.length === 0) {
-      return res.json({ dias: {} }); // Sin horario asignado
-    }
+    if (result.rows.length === 0) return res.json({ dias: {} });
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -214,16 +258,12 @@ router.get('/horarios/:empleadoId/:mes/:anio', async (req, res) => {
   }
 });
 
-// POST /api/admin/horarios — Crear o actualizar horario mensual
 router.post('/horarios', async (req, res) => {
   const { empleado_id, mes, anio, dias } = req.body;
-
   if (!empleado_id || !mes || !anio || !dias) {
     return res.status(400).json({ error: 'Faltan datos del horario.' });
   }
-
   try {
-    // UPSERT: si ya existe el horario para ese mes/año, lo actualiza; si no, lo crea
     const result = await pool.query(
       `INSERT INTO horarios (empleado_id, mes, anio, dias)
        VALUES ($1, $2, $3, $4)
@@ -240,34 +280,20 @@ router.post('/horarios', async (req, res) => {
 });
 
 // ============================================================
-// FICHAJES (vista del administrador)
+// FICHAJES (Admin)
 // ============================================================
 
-// GET /api/admin/fichajes — Todos los fichajes con filtros opcionales
 router.get('/fichajes', async (req, res) => {
   const { empleado_id, centro_id, fecha_inicio, fecha_fin } = req.query;
-
   try {
     let conditions = [];
     let params = [];
     let paramIndex = 1;
 
-    if (empleado_id) {
-      conditions.push(`f.empleado_id = $${paramIndex++}`);
-      params.push(empleado_id);
-    }
-    if (centro_id) {
-      conditions.push(`e.centro_id = $${paramIndex++}`);
-      params.push(centro_id);
-    }
-    if (fecha_inicio) {
-      conditions.push(`f.fecha >= $${paramIndex++}`);
-      params.push(fecha_inicio);
-    }
-    if (fecha_fin) {
-      conditions.push(`f.fecha <= $${paramIndex++}`);
-      params.push(fecha_fin);
-    }
+    if (empleado_id) { conditions.push(`f.empleado_id = $${paramIndex++}`); params.push(empleado_id); }
+    if (centro_id) { conditions.push(`e.centro_id = $${paramIndex++}`); params.push(centro_id); }
+    if (fecha_inicio) { conditions.push(`f.fecha >= $${paramIndex++}`); params.push(fecha_inicio); }
+    if (fecha_fin) { conditions.push(`f.fecha <= $${paramIndex++}`); params.push(fecha_fin); }
 
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 

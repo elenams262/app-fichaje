@@ -67,6 +67,10 @@ const API = (() => {
     crearEmpleado: (data) => request('POST', '/admin/empleados', data),
     editarEmpleado: (id, data) => request('PUT', `/admin/empleados/${id}`, data),
 
+    // CONTRATOS (Admin)
+    getContrato: (empleadoId) => request('GET', `/admin/contratos/${empleadoId}`),
+    guardarContrato: (data) => request('POST', '/admin/contratos', data),
+
     // HORARIOS (Admin)
     getHorarioAdmin: (empleadoId, mes, anio) =>
       request('GET', `/admin/horarios/${empleadoId}/${mes}/${anio}`),
