@@ -120,6 +120,11 @@ const Admin = (() => {
   const renderCentros = () => {
     const contenedor = document.getElementById('centros-list');
     if (!contenedor) return;
+
+    // Conectar el botón SIEMPRE, independientemente de si hay centros
+    const btnNuevo = document.getElementById('btn-nuevo-centro');
+    if (btnNuevo) btnNuevo.onclick = () => modalNuevoCentro();
+
     if (centros.length === 0) {
       contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏠</div><p>No hay centros creados. Crea el primero.</p></div>';
       return;
@@ -229,6 +234,11 @@ const Admin = (() => {
   const renderEmpleados = (lista) => {
     const contenedor = document.getElementById('empleados-list');
     if (!contenedor) return;
+
+    // Conectar el botón SIEMPRE
+    const btnNuevo = document.getElementById('btn-nuevo-empleado');
+    if (btnNuevo) btnNuevo.onclick = () => modalNuevoEmpleado();
+
     if (!lista || lista.length === 0) {
       contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><p>No hay empleados. Crea el primero.</p></div>';
       return;
