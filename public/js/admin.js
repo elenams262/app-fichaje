@@ -311,7 +311,8 @@ const Admin = (() => {
                if(tur) {
                   const e = tur.entrada.split(':')[0];
                   const s = tur.salida.split(':')[0];
-                  casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${tur.entrada} - ${tur.salida}">${e}-${s}</strong>`;
+                  const obsIcon = tur.observaciones ? `<span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-left:2px; vertical-align:middle;" title="${tur.observaciones}"></span>` : '';
+                  casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${tur.entrada} - ${tur.salida} ${tur.observaciones?('· '+tur.observaciones):''}">${e}-${s}</strong>${obsIcon}`;
                   bg = 'background:rgba(16,185,129,0.08);';
                }
             }
@@ -891,6 +892,7 @@ const Admin = (() => {
           </div>
           <input type="time" class="time-input" id="h-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
           <input type="time" class="time-input" id="h-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />
+          <input type="text" class="obs-input" id="h-obs-${dia}" placeholder="Observaciones..." value="${info?.observaciones||''}" ${!activo?'disabled':''} />
           <span style="font-size:12px;color:var(--text-dim)">${activo?'activo':'libre'}</span>
         </div>`;
       }).join('');
@@ -901,6 +903,7 @@ const Admin = (() => {
     const eActivo = toggle.classList.toggle('on');
     document.getElementById(`h-entrada-${dia}`).disabled = !eActivo;
     document.getElementById(`h-salida-${dia}`).disabled = !eActivo;
+    document.getElementById(`h-obs-${dia}`).disabled = !eActivo;
   };
 
   const guardarHorario = async () => {
@@ -914,7 +917,8 @@ const Admin = (() => {
         const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
         dias[diaKey] = {
           entrada: document.getElementById(`h-entrada-${dia}`)?.value || '07:00',
-          salida: document.getElementById(`h-salida-${dia}`)?.value || '15:00'
+          salida: document.getElementById(`h-salida-${dia}`)?.value || '15:00',
+          observaciones: document.getElementById(`h-obs-${dia}`)?.value.trim() || ''
         };
       }
     });

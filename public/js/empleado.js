@@ -234,12 +234,13 @@ const Empleado = (() => {
          let bgColor = 'var(--bg-card)';
          
          if(semAplica && semAplica.dias) {
-             const keyReal = keyDiaSem === 'miercoles' ? 'miércoles' : keyDiaSem;
-             const h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
-             if(h) {
-                 contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>`;
-                 bgColor = 'var(--bg-body)';
-             }
+              const keyReal = keyDiaSem === 'miercoles' ? 'miércoles' : keyDiaSem;
+              const h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
+              if(h) {
+                  const obsHtml = h.observaciones ? `<div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent); cursor:help;" title="${h.observaciones}">📝</div>` : '';
+                  contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>${obsHtml}`;
+                  bgColor = 'var(--bg-body)';
+              }
          }
 
          const isHoy = strDate === localHoy;

@@ -780,7 +780,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 .horario-dia-row {
   display: grid;
-  grid-template-columns: 120px 1fr 1fr 40px;
+  grid-template-columns: 120px 80px 80px 1fr 60px;
   gap: 10px;
   align-items: center;
   padding: 10px 0;
@@ -816,6 +816,19 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   font-size: 14px;
   border-radius: var(--radius-xs);
 }
+
+.obs-input {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-xs);
+  width: 100%;
+}
+.obs-input:focus { border-color: var(--accent); }
+.obs-input:disabled { opacity: 0.4; cursor: not-allowed; }
+
 
 .form-actions { padding-top: 20px; border-top: 1px solid var(--border); margin-top: 16px; }
 
