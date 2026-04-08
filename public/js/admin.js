@@ -888,7 +888,7 @@ const Admin = (() => {
         return `<div class="horario-dia-row" id="row-${dia}">
           <div class="horario-dia-label">
             <div class="toggle-dia ${activo?'on':''}" data-dia="${dia}" onclick="Admin.toggleDia('${dia}')"></div>
-            ${diaKey}
+            <span>${diaKey}</span>
           </div>
           <input type="time" class="time-input" id="h-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
           <input type="time" class="time-input" id="h-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />

@@ -780,14 +780,16 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 .horario-dia-row {
   display: grid;
-  grid-template-columns: 100px 75px 75px minmax(100px, 200px) 1fr;
-  gap: 8px;
+  grid-template-columns: 140px 110px 110px 1fr 60px;
+  gap: 12px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-light);
 }
 .horario-dia-row:last-child { border-bottom: none; }
-.horario-dia-label { font-size: 14px; font-weight: 600; text-transform: capitalize; display: flex; align-items: center; gap: 8px; }
+.horario-dia-label { font-size: 14px; font-weight: 600; text-transform: capitalize; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.horario-dia-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 
 .toggle-dia {
   width: 36px; height: 20px;
@@ -851,7 +853,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   border: 1px solid var(--border);
   border-radius: var(--radius) var(--radius) 0 0;
   width: 100%;
-  max-width: 560px;
+  max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
   animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
