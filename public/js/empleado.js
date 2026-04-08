@@ -186,11 +186,13 @@ const Empleado = (() => {
     contenedor.innerHTML = '<div class="loading-inline"><div class="spinner"></div></div>';
 
     try {
-      // Pedir todas las semanas y licencias que tocan en este mes
-      const [dataSemanas, dataLicencias] = await Promise.all([
+      // Pedir todas las semanas, festivos y licencias que tocan en este mes
+      const [resHorario, dataLicencias] = await Promise.all([
         API.getHorario(mes, anio),
         API.getLicenciasEmpleado()
       ]);
+      const dataSemanas = resHorario.horarios || [];
+      const resFestivos = resHorario.festivos || [];
       
       const primerDia = new Date(anio, mes - 1, 1);
       const ultimoDia = new Date(anio, mes, 0); 
@@ -239,6 +241,9 @@ const Empleado = (() => {
             const end = l.fecha_fin.split('T')[0];
             return strDate >= start && strDate <= end;
          }) : null;
+
+         // Buscar si es festivo del centro
+         const esFesCentro = Array.isArray(resFestivos) ? resFestivos.find(f => f.fecha === strDate) : null;
          
          let contenidoHoras = `<span style="color:var(--text-dim)">Libre</span>`;
          let bgColor = 'var(--bg-card)';
@@ -258,6 +263,12 @@ const Empleado = (() => {
             const icon = licAplica.causa.toLowerCase().includes('vaca') ? '🏝️' : '🏥';
             contenidoHoras = `<span style="color:var(--accent); font-weight:700; font-size:10px;">${icon} ${licAplica.causa}</span>`;
             bgColor = 'var(--accent-light)';
+         }
+
+         // Priorizar visualización de festivos del centro si no hay licencia
+         if(esFesCentro && !licAplica) {
+            contenidoHoras = `<span style="color:var(--red); font-weight:700; font-size:10px;">🚩 Festivo</span><br/><span style="color:var(--text-dim); font-size:9px;">${esFesCentro.nombre}</span>`;
+            bgColor = 'var(--red-light)';
          }
 
          const isHoy = strDate === localHoy;

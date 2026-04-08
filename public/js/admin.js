@@ -174,6 +174,7 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-c-datos">🏠 Datos del centro</button>
       <button class="modal-tab" data-tab-target="tab-c-horario">🕒 Horario</button>
+      ${centro ? `<button class="modal-tab" data-tab-target="tab-c-festivos">🚩 Festivos</button>` : ''}
       ${centro ? `<button class="modal-tab" data-tab-target="tab-c-cuadrante">📅 Cuadrante mensual</button>` : ''}
     </div>
     <div id="tab-c-datos" class="modal-tab-panel active" style="padding-top:15px;">
@@ -196,6 +197,41 @@ const Admin = (() => {
       ${rowsHorario}
     </div>
     ${centro ? `
+    <div id="tab-c-festivos" class="modal-tab-panel" style="padding-top:15px;">
+      <div class="horario-editor-title">Gestionar días festivos del centro</div>
+      <div style="background:var(--bg-3); padding:12px; border-radius:8px; margin-bottom:15px;">
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Fecha</label>
+            <input type="date" id="fes-fecha" />
+          </div>
+          <div class="form-group" style="flex:2">
+            <label>Nombre del festivo</label>
+            <input type="text" id="fes-nombre" placeholder="Ej: Navidad, Fiesta Local..." />
+          </div>
+        </div>
+        <button type="button" class="btn-primary btn-sm" onclick="Admin.añadirFestivoModal()" style="margin-top:10px;">Añadir Festivo</button>
+      </div>
+      <div id="fes-list-container" class="custom-scrollbar" style="max-height:200px; overflow-y:auto;">
+        ${(centro.festivos || []).length === 0 ? '<p style="color:var(--text-dim); text-align:center; font-size:13px; padding:10px;">No hay festivos registrados</p>' : `
+        <table style="font-size:13px;">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th>Acciones</th></tr></thead>
+          <tbody id="fes-tbody">
+            ${centro.festivos.sort((a,b) => a.fecha.localeCompare(b.fecha)).map((f, i) => `
+              <tr>
+                <td>${f.fecha}</td>
+                <td>${f.nombre}</td>
+                <td style="text-align:right">
+                   <button class="btn-icon" onclick="Admin.quitarFestivoModal(${i})" title="Eliminar"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 6l-1 14H6L5 6"></path><circle cx="12" cy="12" r="10"/></svg></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        `}
+      </div>
+    </div>` : ''}
+    ${centro ? `
     <div id="tab-c-cuadrante" class="modal-tab-panel" style="padding-top:15px; margin-bottom: -15px;">
       <div class="horario-editor-title">Vista de cuadrantes de la plantilla del centro</div>
       <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
@@ -213,8 +249,11 @@ const Admin = (() => {
     </div>` : ''}`;
   };
 
+  let festivosTemp = [];
+
   const modalNuevoCentro = (centro = null) => {
     const esEdicion = !!centro;
+    festivosTemp = centro?.festivos ? [...centro.festivos] : [];
     App.openModal(
       esEdicion ? 'Editar centro' : 'Nuevo centro de trabajo',
       getFormCentro(centro),
@@ -243,7 +282,8 @@ const Admin = (() => {
               direccion: document.getElementById('c-dir').value,
               localidad: document.getElementById('c-loc').value,
               activo: esEdicion ? document.getElementById('c-activo').value === 'true' : true,
-              horarios
+              horarios,
+              festivos: festivosTemp
             };
             try {
               if (esEdicion) await API.editarCentro(centro.id, payload);
@@ -267,24 +307,31 @@ const Admin = (() => {
     contenedor.innerHTML = '<div style="padding: 20px;" class="loading-inline"><div class="spinner"></div></div>';
     
     try {
-      const datosGrid = await API.getCuadranteCentro(centroId, mes, anio);
+      const data = await API.getCuadranteCentro(centroId, mes, anio);
+      const resFestivos = data.festivos || [];
+      const datosGrid = data.cuadrante || [];
+
       if(datosGrid.length === 0) {
          contenedor.innerHTML = '<div class="empty-state"><p>No hay empleados activos asignados a este centro.</p></div>';
          return;
       }
 
       const numDias = new Date(anio, mes, 0).getDate();
-      const nomDias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+      const nomDiasShort = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
       
       let html = `<table style="width:100%; border-collapse:collapse; font-size:11px; text-align:center; min-width:${numDias*36+150}px;">`;
       
       html += `<thead><tr>
          <th style="padding:8px; border:1px solid var(--border-color); border-top:none; border-left:none; text-align:left; background:var(--bg-body); position:sticky; left:0; z-index:2; min-width:140px; box-shadow: 2px 0 5px rgba(0,0,0,0.05);">Empleado</th>`;
       for(let d=1; d<=numDias; d++) {
+         const dStr = `${anio}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+         const fesDay = resFestivos.find(f => f.fecha === dStr);
          const ds = new Date(anio, mes-1, d).getDay();
-         const color = (ds===0||ds===6) ? 'color:var(--danger-color)' : 'color:var(--text-color)';
+         const color = fesDay ? 'color:var(--white);' : ((ds===0||ds===6) ? 'color:var(--danger-color)' : 'color:var(--text-color)');
+         const bg = fesDay ? 'background:var(--red);' : 'background:var(--bg-body);';
          const bStyle = d === numDias ? 'border-right:none;' : '';
-         html += `<th style="padding:4px; border:1px solid var(--border-color); ${bStyle} border-top:none; background:var(--bg-body);"><div style="${color}; font-weight:normal; font-size:10px;">${nomDias[ds]}</div><div>${d}</div></th>`;
+         const title = fesDay ? `title="${fesDay.nombre}"` : '';
+         html += `<th ${title} style="padding:4px; border:1px solid var(--border-color); ${bStyle} border-top:none; ${bg}"><div style="${color}; font-weight:normal; font-size:10px;">${nomDiasShort[ds]}</div><div style="${color}">${d}</div></th>`;
       }
       html += `</tr></thead><tbody>`;
       
@@ -305,6 +352,10 @@ const Admin = (() => {
             let casillaTxt = '<span style="color:var(--border-color); cursor:default;" title="Libre">L</span>';
             let bg = numDS === 0 || numDS === 6 ? 'background: rgba(0,0,0,0.02);' : '';
             
+            // Si es festivo, marcar celda
+            const esFes = resFestivos.find(f => f.fecha === strDate);
+            if(esFes) bg = 'background:rgba(239,68,68,0.05);';
+
             if(hAplica && hAplica.dias) {
                const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
                const tur = hAplica.dias[k] || hAplica.dias[diaKey];
@@ -313,7 +364,7 @@ const Admin = (() => {
                   const s = tur.salida.split(':')[0];
                   const obsIcon = tur.observaciones ? `<span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-left:2px; vertical-align:middle;" title="${tur.observaciones}"></span>` : '';
                   casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${tur.entrada} - ${tur.salida} ${tur.observaciones?('· '+tur.observaciones):''}">${e}-${s}</strong>${obsIcon}`;
-                  bg = 'background:rgba(16,185,129,0.08);';
+                  if(!esFes) bg = 'background:rgba(16,185,129,0.08);';
                }
             }
             const bStyle2 = d === numDias ? 'border-right:none;' : '';
@@ -328,6 +379,54 @@ const Admin = (() => {
     } catch(err) {
       contenedor.innerHTML = `<div class="empty-state"><p>Error al generar el cuadrante: ${err.message}</p></div>`;
     }
+  };
+
+  const añadirFestivoModal = () => {
+    const fecha = document.getElementById('fes-fecha').value;
+    const nombre = document.getElementById('fes-nombre').value.trim();
+    if(!fecha || !nombre) {
+      App.showToast('Fecha y nombre son obligatorios', 'error');
+      return;
+    }
+    if(festivosTemp.find(f => f.fecha === fecha)) {
+      App.showToast('Ya existe un festivo en esa fecha', 'warning');
+      return;
+    }
+    festivosTemp.push({ fecha, nombre });
+    renderListaFestivos();
+    document.getElementById('fes-fecha').value = '';
+    document.getElementById('fes-nombre').value = '';
+  };
+
+  const quitarFestivoModal = (index) => {
+    festivosTemp.splice(index, 1);
+    renderListaFestivos();
+  };
+
+  const renderListaFestivos = () => {
+    const container = document.getElementById('fes-list-container');
+    if(!container) return;
+    if(festivosTemp.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-dim); text-align:center; font-size:13px; padding:10px;">No hay festivos registrados</p>';
+      return;
+    }
+    festivosTemp.sort((a,b) => a.fecha.localeCompare(b.fecha));
+    container.innerHTML = `
+      <table style="font-size:13px;">
+        <thead><tr><th>Fecha</th><th>Nombre</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${festivosTemp.map((f, i) => `
+            <tr>
+              <td>${f.fecha}</td>
+              <td>${f.nombre}</td>
+              <td style="text-align:right">
+                 <button class="btn-icon" onclick="Admin.quitarFestivoModal(${i})" title="Eliminar"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 6l-1 14H6L5 6"/><circle cx="12" cy="12" r="10"/></svg></button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
   };
 
   const editarCentroModal = async (id) => {
@@ -1132,6 +1231,7 @@ const Admin = (() => {
     editarCentroModal, eliminarCentroConfirm, cargarCuadranteCentro,
     editarEmpleadoModal, toggleDia, seleccionarSemana,
     guardarLicenciaModal, eliminarLicenciaModal,
-    mostrarFormNuevoContrato, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal
+    mostrarFormNuevoContrato, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal,
+    añadirFestivoModal, quitarFestivoModal
   };
 })();

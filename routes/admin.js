@@ -29,12 +29,12 @@ router.get('/centros', async (req, res) => {
 });
 
 router.post('/centros', async (req, res) => {
-  const { nombre, direccion, localidad, horarios } = req.body;
+  const { nombre, direccion, localidad, horarios, festivos } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre del centro es obligatorio.' });
   try {
     const result = await pool.query(
-      'INSERT INTO centros (nombre, direccion, localidad, horarios) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, direccion || null, localidad || null, JSON.stringify(horarios || {})]
+      'INSERT INTO centros (nombre, direccion, localidad, horarios, festivos) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nombre, direccion || null, localidad || null, JSON.stringify(horarios || {}), JSON.stringify(festivos || [])]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -44,11 +44,11 @@ router.post('/centros', async (req, res) => {
 });
 
 router.put('/centros/:id', async (req, res) => {
-  const { nombre, direccion, localidad, activo, horarios } = req.body;
+  const { nombre, direccion, localidad, activo, horarios, festivos } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4, horarios=$5 WHERE id=$6 RETURNING *`,
-      [nombre, direccion, localidad, activo, JSON.stringify(horarios || {}), req.params.id]
+      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4, horarios=$5, festivos=$6 WHERE id=$7 RETURNING *`,
+      [nombre, direccion, localidad, activo, JSON.stringify(horarios || {}), JSON.stringify(festivos || []), req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Centro no encontrado.' });
     res.json(result.rows[0]);
@@ -62,6 +62,9 @@ router.get('/centros/:id/cuadrante/:mes/:anio', async (req, res) => {
   const { id, mes, anio } = req.params;
   
   try {
+    const centroResult = await pool.query('SELECT id, nombre, festivos FROM centros WHERE id = $1', [id]);
+    if (centroResult.rows.length === 0) return res.status(404).json({ error: 'Centro no encontrado.' });
+
     const empResult = await pool.query(
       'SELECT id, nombre, apellidos, puesto FROM empleados WHERE centro_id = $1 AND activo = true ORDER BY apellidos, nombre',
       [id]
@@ -84,12 +87,15 @@ router.get('/centros/:id/cuadrante/:mes/:anio', async (req, res) => {
     );
     const todosHorarios = horResult.rows;
 
-    const respuesta = empleadosCentro.map(emp => {
-       return {
-           empleado: emp,
-           horarios: todosHorarios.filter(h => h.empleado_id === emp.id)
-       };
-    });
+    const respuesta = {
+       festivos: centroResult.rows[0].festivos || [],
+       cuadrante: empleadosCentro.map(emp => {
+           return {
+               empleado: emp,
+               horarios: todosHorarios.filter(h => h.empleado_id === emp.id)
+           };
+       })
+    };
 
     res.json(respuesta);
   } catch (err) {
