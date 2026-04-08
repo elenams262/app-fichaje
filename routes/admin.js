@@ -29,12 +29,12 @@ router.get('/centros', async (req, res) => {
 });
 
 router.post('/centros', async (req, res) => {
-  const { nombre, direccion, localidad } = req.body;
+  const { nombre, direccion, localidad, horarios } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre del centro es obligatorio.' });
   try {
     const result = await pool.query(
-      'INSERT INTO centros (nombre, direccion, localidad) VALUES ($1, $2, $3) RETURNING *',
-      [nombre, direccion || null, localidad || null]
+      'INSERT INTO centros (nombre, direccion, localidad, horarios) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nombre, direccion || null, localidad || null, JSON.stringify(horarios || {})]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -44,11 +44,11 @@ router.post('/centros', async (req, res) => {
 });
 
 router.put('/centros/:id', async (req, res) => {
-  const { nombre, direccion, localidad, activo } = req.body;
+  const { nombre, direccion, localidad, activo, horarios } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4 WHERE id=$5 RETURNING *`,
-      [nombre, direccion, localidad, activo, req.params.id]
+      `UPDATE centros SET nombre=$1, direccion=$2, localidad=$3, activo=$4, horarios=$5 WHERE id=$6 RETURNING *`,
+      [nombre, direccion, localidad, activo, JSON.stringify(horarios || {}), req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Centro no encontrado.' });
     res.json(result.rows[0]);

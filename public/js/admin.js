@@ -134,6 +134,7 @@ const Admin = (() => {
         <div class="centro-card-icon">⛽</div>
         <div class="centro-card-name">${c.nombre}</div>
         <div class="centro-card-dir">${[c.direccion, c.localidad].filter(Boolean).join(' · ') || 'Sin dirección'}</div>
+        ${Object.keys(c.horarios||{}).length > 0 ? `<div class="centro-card-schedule" style="font-size:12px; color:var(--text-dim); margin-top:8px;">🕒 Horario configurado </div>` : `<div style="font-size:12px; color:var(--text-dim); margin-top:8px;">⚠️ Sin horario especificado</div>`}
         <div class="centro-card-footer">
           <span class="centro-card-count">${c.total_empleados || 0} empleado${c.total_empleados != 1 ? 's' : ''}</span>
           <div class="centro-card-actions">
@@ -150,29 +151,82 @@ const Admin = (() => {
     document.getElementById('btn-nuevo-centro').onclick = () => modalNuevoCentro();
   };
 
-  const modalNuevoCentro = (centro = null) => {
-    const esEdicion = !!centro;
-    App.openModal(
-      esEdicion ? 'Editar centro' : 'Nuevo centro de trabajo',
-      `<form id="form-centro" class="form">
+  const getFormCentro = (centro = null) => {
+    const diasArray = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+    const h = centro?.horarios || {};
+    
+    const rowsHorario = diasArray.map(dia => {
+      const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+      const info = h[diaKey] || h[dia] || null;
+      const activo = !!info;
+      return `<div class="horario-dia-row">
+        <div class="horario-dia-label">
+          <div class="toggle-dia ${activo?'on':''}" data-cdia="${dia}" onclick="const t=this; t.classList.toggle('on'); const act=t.classList.contains('on'); document.getElementById('ch-entrada-${dia}').disabled=!act; document.getElementById('ch-salida-${dia}').disabled=!act;"></div>
+          ${diaKey}
+        </div>
+        <input type="time" class="time-input" id="ch-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
+        <input type="time" class="time-input" id="ch-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />
+        <span style="font-size:12px;color:var(--text-dim)">${activo?'activo':'cerrado'}</span>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab-target="tab-c-datos">🏠 Datos del centro</button>
+      <button class="modal-tab" data-tab-target="tab-c-horario">🕒 Horario</button>
+    </div>
+    <div id="tab-c-datos" class="modal-tab-panel active" style="padding-top:15px;">
+      <form id="form-centro" class="form">
         <div class="form-group"><label>Nombre del centro *</label>
           <input type="text" id="c-nombre" value="${centro?.nombre||''}" required placeholder="Ej: Gasolinera Repsol Norte" /></div>
         <div class="form-group"><label>Dirección</label>
           <input type="text" id="c-dir" value="${centro?.direccion||''}" placeholder="Calle, número..." /></div>
         <div class="form-group"><label>Localidad</label>
           <input type="text" id="c-loc" value="${centro?.localidad||''}" placeholder="Ciudad o municipio" /></div>
-      </form>`,
+        ${centro ? `<div class="form-group"><label>Estado</label>
+          <select id="c-activo" class="select-full">
+            <option value="true" ${centro.activo?'selected':''}>Activo</option>
+            <option value="false" ${!centro.activo?'selected':''}>Inactivo</option>
+          </select></div>` : ''}
+      </form>
+    </div>
+    <div id="tab-c-horario" class="modal-tab-panel" style="padding-top:15px;">
+      <div class="horario-editor-title">Define el horario de apertura del centro</div>
+      ${rowsHorario}
+    </div>`;
+  };
+
+  const modalNuevoCentro = (centro = null) => {
+    const esEdicion = !!centro;
+    App.openModal(
+      esEdicion ? 'Editar centro' : 'Nuevo centro de trabajo',
+      getFormCentro(centro),
       [
         { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
         { text: esEdicion ? 'Guardar cambios' : 'Crear centro', cls: 'btn-primary',
           action: async () => {
             const nombre = document.getElementById('c-nombre').value.trim();
             if (!nombre) { App.showToast('El nombre es obligatorio', 'error'); return; }
+            
+            const diasArray = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+            const horarios = {};
+            diasArray.forEach(dia => {
+              const toggle = document.querySelector(`[data-cdia="${dia}"]`);
+              if (toggle && toggle.classList.contains('on')) {
+                const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+                horarios[diaKey] = {
+                  entrada: document.getElementById(`ch-entrada-${dia}`).value || '07:00',
+                  salida: document.getElementById(`ch-salida-${dia}`).value || '15:00'
+                };
+              }
+            });
+
             const payload = {
               nombre,
               direccion: document.getElementById('c-dir').value,
               localidad: document.getElementById('c-loc').value,
-              activo: true
+              activo: esEdicion ? document.getElementById('c-activo').value === 'true' : true,
+              horarios
             };
             try {
               if (esEdicion) await API.editarCentro(centro.id, payload);
@@ -185,6 +239,7 @@ const Admin = (() => {
         }
       ]
     );
+    setTimeout(initModalTabs, 50);
   };
 
   const editarCentroModal = async (id) => {

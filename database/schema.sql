@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS centros (
   direccion  TEXT,
   localidad  VARCHAR(100),
   activo     BOOLEAN DEFAULT true,
+  horarios   JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
