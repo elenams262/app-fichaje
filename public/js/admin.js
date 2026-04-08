@@ -436,7 +436,7 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-personal">👤 Datos personales</button>
       <button class="modal-tab" data-tab-target="tab-contrato">📄 Contrato</button>
-      ${emp ? `<button class="modal-tab" data-tab-target="tab-licencias">⏸️ Permisos</button>` : ''}
+      ${emp ? `<button class="modal-tab" data-tab-target="tab-licencias-admin">⏸️ Permisos</button>` : ''}
     </div>
 
     <!-- TAB 1: DATOS PERSONALES -->
@@ -566,7 +566,7 @@ const Admin = (() => {
     
     <!-- TAB 3: LICENCIAS Y PERMISOS -->
     ${emp ? `
-    <div id="tab-licencias" class="modal-tab-panel">
+    <div id="tab-licencias-admin" class="modal-tab-panel">
       <div style="margin-bottom:15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
         <h4 style="margin-bottom: 10px; font-size: 14px;">Añadir licencia o permiso</h4>
         <div class="form-row">
@@ -734,7 +734,7 @@ const Admin = (() => {
         fecha_fin: fin
       });
       App.showToast('Licencia añadida', 'success');
-      editarEmpleadoModal(empleadoId, 'tab-licencias');
+      editarEmpleadoModal(empleadoId, 'tab-licencias-admin');
     } catch (e) {
       App.showToast(e.message, 'error');
     }
@@ -745,7 +745,7 @@ const Admin = (() => {
     try {
       await API.eliminarLicencia(id);
       App.showToast('Licencia eliminada', 'success');
-      editarEmpleadoModal(empleadoId, 'tab-licencias');
+      editarEmpleadoModal(empleadoId, 'tab-licencias-admin');
     } catch (e) {
       App.showToast(e.message, 'error');
     }
