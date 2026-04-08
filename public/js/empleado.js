@@ -324,6 +324,43 @@ const Empleado = (() => {
     }
   };
 
+  // Cargar historial de contratos del empleado
+  const cargarContratos = async () => {
+    const contenedor = document.getElementById('contratos-list');
+    contenedor.innerHTML = '<div class="loading-inline"><div class="spinner"></div></div>';
+
+    try {
+      const data = await API.getContratosEmpleado();
+      if (!data || data.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>No hay contratos registrados</p></div>';
+        return;
+      }
+
+      const html = data.map(ct => {
+        const inicio = ct.fecha_inicio ? new Date(ct.fecha_inicio).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+        const fin = ct.fecha_fin ? new Date(ct.fecha_fin).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Indefinido';
+        
+        return `
+          <div class="licencia-card-emp ${ct.activo ? 'active' : 'past'}">
+            <div class="lic-info">
+              <span class="lic-causa">${ct.tipo_contrato || 'Contrato'} - ${ct.categoria_profesional || 'Sin categoría'}</span>
+              <span class="lic-fechas">${inicio} — ${fin}</span>
+              <div style="font-size:11px; margin-top:5px; color:var(--text-dim);">
+                <b>Centro:</b> ${ct.centro_nombre || '—'} | <b>Jornada:</b> ${ct.tipo_jornada || '—'} (${ct.horas_semanales || 0}h)
+              </div>
+            </div>
+            <div class="lic-status-badge">${ct.activo ? 'Actual' : 'Finalizado'}</div>
+          </div>
+        `;
+      }).join('');
+
+      contenedor.innerHTML = `<div class="licencias-grid-emp">${html}</div>`;
+
+    } catch (e) {
+      contenedor.innerHTML = `<div class="empty-state"><p>Error al cargar historial contractual: ${e.message}</p></div>`;
+    }
+  };
+
   // Navegación entre tabs del empleado
   const initBottomNav = () => {
     document.querySelectorAll('.bottom-nav-item').forEach(btn => {
@@ -338,6 +375,7 @@ const Empleado = (() => {
         if (tabId === 'tab-historial') cargarHistorial();
         if (tabId === 'tab-horario') cargarHorario();
         if (tabId === 'tab-licencias') cargarLicencias();
+        if (tabId === 'tab-contratos') cargarContratos();
       });
     });
   };

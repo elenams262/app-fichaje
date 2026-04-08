@@ -53,6 +53,7 @@ const API = (() => {
     getHorario: (mes, anio) =>
       request('GET', `/fichajes/horario?mes=${mes}&anio=${anio}`),
     getLicenciasEmpleado: () => request('GET', '/fichajes/licencias'),
+    getContratosEmpleado: () => request('GET', '/fichajes/contratos'),
 
     // CENTROS (Admin)
     getCentros: () => request('GET', '/admin/centros'),
@@ -72,6 +73,7 @@ const API = (() => {
     // CONTRATOS (Admin)
     getContrato: (empleadoId) => request('GET', `/admin/contratos/${empleadoId}`),
     guardarContrato: (data) => request('POST', '/admin/contratos', data),
+    eliminarContrato: (id) => request('DELETE', `/admin/contratos/${id}`),
 
     // HORARIOS (Admin)
     getHorarioAdmin: (empleadoId, mes, anio) =>

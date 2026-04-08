@@ -217,7 +217,7 @@ router.put('/empleados/:id', async (req, res) => {
 // CONTRATOS
 // ============================================================
 
-// GET /api/admin/contratos/:empleadoId — Contrato activo de un empleado
+// GET /api/admin/contratos/:empleadoId — Historial de contratos
 router.get('/contratos/:empleadoId', async (req, res) => {
   try {
     const result = await pool.query(
@@ -225,14 +225,23 @@ router.get('/contratos/:empleadoId', async (req, res) => {
        FROM contratos ct
        LEFT JOIN centros c ON ct.centro_id = c.id
        WHERE ct.empleado_id = $1
-       ORDER BY ct.created_at DESC`,
+       ORDER BY ct.fecha_inicio DESC, ct.created_at DESC`,
       [req.params.empleadoId]
     );
-    // Devolver el más reciente (activo) o null
-    res.json(result.rows[0] || null);
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al obtener el contrato.' });
+    res.status(500).json({ error: 'Error al obtener los contratos.' });
+  }
+});
+
+router.delete('/contratos/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM contratos WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Contrato eliminado.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar el contrato.' });
   }
 });
 

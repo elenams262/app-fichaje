@@ -428,9 +428,10 @@ const Admin = (() => {
     document.getElementById('btn-nuevo-empleado').onclick = () => modalNuevoEmpleado();
   };
 
-  const getFormEmpleado = (emp = null, contrato = null, licencias = []) => {
+  const getFormEmpleado = (emp = null, contratos = [], licencias = []) => {
+    const contratoActivo = contratos.find(c => c.activo) || contratos[0] || null;
     const centrosOpts = centros.map(c =>
-      `<option value="${c.id}" ${(emp?.centro_id === c.id || contrato?.centro_id === c.id) ? 'selected' : ''}>${c.nombre}</option>`
+      `<option value="${c.id}" ${(emp?.centro_id === c.id || contratoActivo?.centro_id === c.id) ? 'selected' : ''}>${c.nombre}</option>`
     ).join('');
 
     return `
@@ -503,66 +504,99 @@ const Admin = (() => {
 
     <!-- TAB 2: CONTRATO -->
     <div id="tab-contrato" class="modal-tab-panel">
-      <form id="form-contrato" class="form">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Tipo de contrato</label>
-            <select id="ct-tipo" class="select-full">
-              <option value="">Seleccionar...</option>
-              <option value="Indefinido" ${contrato?.tipo_contrato==='Indefinido'?'selected':''}>Indefinido</option>
-              <option value="Temporal" ${contrato?.tipo_contrato==='Temporal'?'selected':''}>Temporal</option>
-              <option value="Temporal por obra" ${contrato?.tipo_contrato==='Temporal por obra'?'selected':''}>Temporal por obra</option>
-              <option value="Prácticas" ${contrato?.tipo_contrato==='Prácticas'?'selected':''}>Prácticas</option>
-              <option value="Formación" ${contrato?.tipo_contrato==='Formación'?'selected':''}>Formación</option>
-              <option value="Relevo" ${contrato?.tipo_contrato==='Relevo'?'selected':''}>Relevo</option>
-              <option value="Otro" ${contrato?.tipo_contrato==='Otro'?'selected':''}>Otro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Centro (contrato)</label>
-            <select id="ct-centro" class="select-full">
-              <option value="">Sin asignar</option>${centrosOpts}
-            </select>
-          </div>
+      ${emp ? `
+      <div style="margin-bottom:20px;">
+        <h4 style="font-size: 14px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;">
+          Historial de contratos
+          <button type="button" class="btn-primary btn-sm" onclick="Admin.mostrarFormNuevoContrato()">Añadir contrato</button>
+        </h4>
+        <div class="custom-scrollbar" style="max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+          ${contratos.length === 0 ? '<p style="padding:15px; color:var(--text-dim); font-size:13px; text-align:center;">No hay contratos registrados.</p>' : `
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="background:var(--bg-3); text-align:left;"><th style="padding:8px">Inicio</th><th style="padding:8px">Tipo</th><th style="padding:8px">Estado</th><th style="padding:8px"></th></tr></thead>
+            <tbody>
+              ${contratos.map(c => `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:8px">${c.fecha_inicio ? c.fecha_inicio.split('T')[0] : '—'}</td>
+                <td style="padding:8px">${c.tipo_contrato || '—'}</td>
+                <td style="padding:8px"><span class="badge ${c.activo ? 'badge-green' : 'badge-red'}" style="font-size:10px">${c.activo ? 'ACTIVO' : 'HISTÓRICO'}</span></td>
+                <td style="padding:8px; text-align:right;">
+                  <button type="button" class="btn-icon" onclick="Admin.eliminarContratoModal('${c.id}', '${emp.id}')" title="Eliminar registro"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg></button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`}
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Categoría profesional</label>
-            <input type="text" id="ct-categoria" value="${contrato?.categoria_profesional||''}" placeholder="Ej: Técnico Nivel II" />
+      </div>` : ''}
+
+      <div id="form-nuevo-contrato-container" style="${emp ? 'display:none; border-top: 1px solid var(--border); padding-top:15px;' : ''}">
+        <h4 style="margin-bottom: 15px; font-size: 14px;">${emp ? 'Detalles del nuevo contrato' : 'Datos del contrato'}</h4>
+        <form id="form-contrato" class="form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo de contrato</label>
+              <select id="ct-tipo" class="select-full">
+                <option value="">Seleccionar...</option>
+                <option value="Indefinido">Indefinido</option>
+                <option value="Temporal">Temporal</option>
+                <option value="Temporal por obra">Temporal por obra</option>
+                <option value="Prácticas">Prácticas</option>
+                <option value="Formación">Formación</option>
+                <option value="Relevo">Relevo</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Centro (contrato)</label>
+              <select id="ct-centro" class="select-full">
+                <option value="">Sin asignar</option>${centrosOpts}
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Convenio colectivo</label>
-            <input type="text" id="ct-convenio" value="${contrato?.convenio||''}" placeholder="Ej: Convenio estaciones de servicio" />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Categoría profesional</label>
+              <input type="text" id="ct-categoria" placeholder="Ej: Técnico Nivel II" />
+            </div>
+            <div class="form-group">
+              <label>Convenio colectivo</label>
+              <input type="text" id="ct-convenio" placeholder="Ej: Convenio estaciones de servicio" />
+            </div>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Tipo de jornada</label>
-            <select id="ct-jornada" class="select-full">
-              <option value="">Seleccionar...</option>
-              <option value="Completa" ${contrato?.tipo_jornada==='Completa'?'selected':''}>Completa</option>
-              <option value="Parcial" ${contrato?.tipo_jornada==='Parcial'?'selected':''}>Parcial</option>
-              <option value="Reducida" ${contrato?.tipo_jornada==='Reducida'?'selected':''}>Reducida</option>
-              <option value="Nocturna" ${contrato?.tipo_jornada==='Nocturna'?'selected':''}>Nocturna</option>
-              <option value="Turnos" ${contrato?.tipo_jornada==='Turnos'?'selected':''}>Turnos</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo de jornada</label>
+              <select id="ct-jornada" class="select-full">
+                <option value="">Seleccionar...</option>
+                <option value="Completa">Completa</option>
+                <option value="Parcial">Parcial</option>
+                <option value="Reducida">Reducida</option>
+                <option value="Nocturna">Nocturna</option>
+                <option value="Turnos">Turnos</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Horas semanales</label>
+              <input type="number" id="ct-horas" placeholder="Ej: 40" min="1" max="60" step="0.5" />
+            </div>
           </div>
-          <div class="form-group">
-            <label>Horas semanales</label>
-            <input type="number" id="ct-horas" value="${contrato?.horas_semanales||''}" placeholder="Ej: 40" min="1" max="60" step="0.5" />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha de inicio</label>
+              <input type="date" id="ct-inicio" />
+            </div>
+            <div class="form-group">
+              <label>Fecha de fin <span style="color:var(--text-dim);font-weight:400">(vacío = indefinido)</span></label>
+              <input type="date" id="ct-fin" />
+            </div>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Fecha de inicio</label>
-            <input type="date" id="ct-inicio" value="${contrato?.fecha_inicio ? contrato.fecha_inicio.split('T')[0] : ''}" />
-          </div>
-          <div class="form-group">
-            <label>Fecha de fin <span style="color:var(--text-dim);font-weight:400">(vacío = indefinido)</span></label>
-            <input type="date" id="ct-fin" value="${contrato?.fecha_fin ? contrato.fecha_fin.split('T')[0] : ''}" />
-          </div>
-        </div>
-      </form>
+          ${emp ? `
+          <div style="text-align:right; margin-top:10px;">
+            <button type="button" class="btn-outline btn-sm" onclick="Admin.ocultarFormNuevoContrato()">Cancelar</button>
+            <button type="button" class="btn-primary btn-sm" onclick="Admin.guardarNuevoContrato('${emp.id}')">Guardar Contrato</button>
+          </div>` : ''}
+        </form>
+      </div>
     </div>
     
     <!-- TAB 3: LICENCIAS Y PERMISOS -->
@@ -675,17 +709,17 @@ const Admin = (() => {
     const emp = empleados.find(e => e.id === id);
     if (!emp) return;
     // Cargar contrato y licencias existente en paralelo
-    let contrato = null;
+    let contratos = [];
     let licencias = [];
     try { 
       const res = await Promise.all([
-        API.getContrato(id).catch(() => null),
+        API.getContrato(id).catch(() => []),
         API.getLicencias(id).catch(() => [])
       ]);
-      contrato = res[0];
+      contratos = Array.isArray(res[0]) ? res[0] : (res[0] ? [res[0]] : []);
       licencias = res[1] || [];
     } catch (_) {}
-    App.openModal('Editar empleado', getFormEmpleado(emp, contrato, licencias), [
+    App.openModal('Editar empleado', getFormEmpleado(emp, contratos, licencias), [
       { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
       { text: 'Guardar cambios', cls: 'btn-primary', action: async () => {
         const payload = leerDatosEmpleado(true);
@@ -747,6 +781,42 @@ const Admin = (() => {
       await API.eliminarLicencia(id);
       App.showToast('Licencia eliminada', 'success');
       editarEmpleadoModal(empleadoId, 'tab-licencias-admin');
+    } catch (e) {
+      App.showToast(e.message, 'error');
+    }
+  };
+
+  // FUNCIONES DE GESTIÓN DE CONTRATOS
+  const mostrarFormNuevoContrato = () => {
+    document.getElementById('form-nuevo-contrato-container').style.display = 'block';
+    document.getElementById('form-contrato').reset();
+  };
+
+  const ocultarFormNuevoContrato = () => {
+    document.getElementById('form-nuevo-contrato-container').style.display = 'none';
+  };
+
+  const guardarNuevoContrato = async (empleadoId) => {
+    const ct = leerDatosContrato(empleadoId);
+    if (!ct.tipo_contrato || !ct.fecha_inicio) {
+      App.showToast('El tipo de contrato y la fecha de inicio son obligatorios', 'error');
+      return;
+    }
+    try {
+      await API.guardarContrato(ct);
+      App.showToast('Contrato guardado correctamente', 'success');
+      editarEmpleadoModal(empleadoId, 'tab-contrato');
+    } catch (e) {
+      App.showToast(e.message, 'error');
+    }
+  };
+
+  const eliminarContratoModal = async (id, empleadoId) => {
+    if(!confirm("¿Seguro que deseas eliminar este registro de contrato?")) return;
+    try {
+      await API.eliminarContrato(id);
+      App.showToast('Contrato eliminado', 'success');
+      editarEmpleadoModal(empleadoId, 'tab-contrato');
     } catch (e) {
       App.showToast(e.message, 'error');
     }
@@ -1061,6 +1131,7 @@ const Admin = (() => {
     init, cargarDashboard,
     editarCentroModal, eliminarCentroConfirm, cargarCuadranteCentro,
     editarEmpleadoModal, toggleDia, seleccionarSemana,
-    guardarLicenciaModal, eliminarLicenciaModal
+    guardarLicenciaModal, eliminarLicenciaModal,
+    mostrarFormNuevoContrato, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal
   };
 })();
