@@ -22,7 +22,7 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
     );
 
     if (licenciaResult.rows.length > 0) {
-      return res.status(403).json({ error: `No puedes fichar: Estás en periodo de ${licenciaResult.rows[0].causa}.` });
+      return res.status(400).json({ error: `No puedes fichar: Estás en periodo de ${licenciaResult.rows[0].causa}.` });
     }
 
     // Ver el último fichaje del empleado de HOY

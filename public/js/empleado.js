@@ -107,7 +107,9 @@ const Empleado = (() => {
       App.showToast(res.mensaje, 'success');
       await cargarEstado();
     } catch (e) {
-      App.showToast(e.message, 'error');
+      App.openModal('Aviso sobre tu fichaje', `<p style="text-align:center; padding: 10px;">${e.message}</p>`, [
+        { text: 'Entendido', cls: 'btn-primary', action: () => App.closeModal() }
+      ]);
       btn.disabled = false;
     }
   };
