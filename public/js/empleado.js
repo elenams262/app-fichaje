@@ -181,33 +181,90 @@ const Empleado = (() => {
   };
 
   // Cargar horario del empleado
-  const cargarHorario = async () => {
+  const cargarHorario = async (mes = new Date().getMonth() + 1, anio = new Date().getFullYear()) => {
     const contenedor = document.getElementById('horario-display');
     contenedor.innerHTML = '<div class="loading-inline"><div class="spinner"></div></div>';
 
     try {
-      const data = await API.getHorario();
-      if (!data.dias || Object.keys(data.dias).length === 0) {
-        contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><p>No tienes horario asignado para este mes</p></div>';
-        return;
-      }
+      // Pedir todas las semanas que tocan en este mes
+      const dataSemanas = await API.getHorario(mes, anio);
+      
+      const primerDia = new Date(anio, mes - 1, 1);
+      const ultimoDia = new Date(anio, mes, 0); 
+      const numDias = ultimoDia.getDate();
+      
+      let offset = primerDia.getDay() || 7; 
+      offset -= 1; 
+      
+      let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
+        <h4 style="margin:0; font-size:16px;">${MESES_ES[mes - 1]} ${anio}</h4>
+        <div>
+          <button class="btn-icon" onclick="Empleado.cambiarMesHorario(-1, ${mes}, ${anio})" style="background:var(--bg-body); border-radius:4px; padding:5px;">◀</button>
+          <button class="btn-icon" onclick="Empleado.cambiarMesHorario(1, ${mes}, ${anio})" style="background:var(--bg-body); border-radius:4px; padding:5px; margin-left:5px;">▶</button>
+        </div>
+      </div>`;
 
-      const orden = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
-      contenedor.innerHTML = orden.map(dia => {
-        const info = data.dias[dia] || data.dias[dia.normalize('NFD').replace(/[\u0300-\u036f]/g,'')];
-        if (!info) return `<div class="horario-row">
-          <span class="horario-dia" style="text-transform:capitalize">${dia}</span>
-          <span class="horario-libre">Libre</span>
-        </div>`;
-        return `<div class="horario-row">
-          <span class="horario-dia" style="text-transform:capitalize">${dia}</span>
-          <span class="horario-horas">${info.entrada} — ${info.salida}</span>
-        </div>`;
-      }).join('');
+      html += `<div style="display:grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align:center;">`;
+      const cabeceras = ['L','M','X','J','V','S','D'];
+      cabeceras.forEach(c => html += `<div style="font-weight:bold; color:var(--text-dim); font-size:12px; margin-bottom:4px;">${c}</div>`);
+      
+      for(let i = 0; i < offset; i++) {
+         html += `<div></div>`;
+      }
+      
+      const nomDias = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+      
+      const hoyStr = new Date();
+      // Ajuste timezone manual para String sin desfase de hora, usamos util local
+      const offsetHoy = hoyStr.getTimezoneOffset() * 60000;
+      const localHoy = (new Date(hoyStr - offsetHoy)).toISOString().split('T')[0];
+
+      for(let d = 1; d <= numDias; d++) {
+         const dActual = new Date(Date.UTC(anio, mes - 1, d)); // Usar UTC para evitar baile por daylight savings
+         const numDiaSem = dActual.getUTCDay();
+         const keyDiaSem = nomDias[numDiaSem];
+         
+         const strDate = dActual.toISOString().split('T')[0]; 
+         
+         const semAplica = Array.isArray(dataSemanas) ? dataSemanas.find(s => {
+            return strDate >= s.fecha_inicio.split('T')[0] && strDate <= s.fecha_fin.split('T')[0];
+         }) : null;
+         
+         let contenidoHoras = `<span style="color:var(--text-dim)">Libre</span>`;
+         let bgColor = 'var(--bg-card)';
+         
+         if(semAplica && semAplica.dias) {
+             const keyReal = keyDiaSem === 'miercoles' ? 'miércoles' : keyDiaSem;
+             const h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
+             if(h) {
+                 contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>`;
+                 bgColor = 'var(--bg-body)';
+             }
+         }
+
+         const isHoy = strDate === localHoy;
+         const bordeActivo = isHoy ? `border: 2px solid var(--primary-color);` : `border: 1px solid var(--border-color);`;
+
+         html += `<div style="position:relative; background:${bgColor}; border-radius:6px; ${bordeActivo} padding:20px 2px 5px 2px; min-height:65px; display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:11px;">
+             <div style="position:absolute; top:2px; right:4px; font-size:11px; font-weight:bold; color:var(--text-dim)">${d}</div>
+             ${contenidoHoras}
+         </div>`;
+      }
+      
+      html += `</div>`;
+      contenedor.innerHTML = html;
 
     } catch (e) {
-      contenedor.innerHTML = `<div class="empty-state"><p>Error al cargar horario</p></div>`;
+      contenedor.innerHTML = `<div class="empty-state"><p>Error al cargar el calendario mensual. Inténtalo de nuevo más tarde.</p></div>`;
     }
+  };
+
+  const cambiarMesHorario = (delta, mesActual, anioActual) => {
+     let m = mesActual + delta;
+     let a = anioActual;
+     if(m > 12) { m = 1; a++; }
+     if(m < 1) { m = 12; a--; }
+     cargarHorario(m, a);
   };
 
   // Navegación entre tabs del empleado
@@ -237,5 +294,5 @@ const Empleado = (() => {
     if (clockInterval) clearInterval(clockInterval);
   };
 
-  return { init, bindFichar, destroy };
+  return { init, bindFichar, destroy, cambiarMesHorario };
 })();

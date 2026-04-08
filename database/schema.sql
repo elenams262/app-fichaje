@@ -52,17 +52,16 @@ CREATE TABLE IF NOT EXISTS empleados (
 
 -- ============================================================
 -- TABLA: horarios
--- El administrador asigna el horario mensual a cada empleado
--- dias es un JSON con la estructura por día de la semana
+-- Se definen por empleado y por "Semana" específica.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS horarios (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  empleado_id  UUID REFERENCES empleados(id) ON DELETE CASCADE NOT NULL,
-  mes          INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
-  anio         INTEGER NOT NULL,
-  dias         JSONB NOT NULL DEFAULT '{}',
+  empleado_id  UUID REFERENCES empleados(id) ON DELETE CASCADE,
+  fecha_inicio DATE NOT NULL,
+  fecha_fin    DATE NOT NULL,
+  dias         JSONB NOT NULL,
   created_at   TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(empleado_id, mes, anio)
+  UNIQUE(empleado_id, fecha_inicio, fecha_fin)
 );
 
 -- ============================================================

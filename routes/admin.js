@@ -247,35 +247,39 @@ router.get('/horarios/:empleadoId/:mes/:anio', async (req, res) => {
   const { empleadoId, mes, anio } = req.params;
   try {
     const result = await pool.query(
-      'SELECT * FROM horarios WHERE empleado_id=$1 AND mes=$2 AND anio=$3',
+      `SELECT * FROM horarios 
+       WHERE empleado_id = $1 
+         AND ((EXTRACT(MONTH FROM fecha_inicio) = $2 AND EXTRACT(YEAR FROM fecha_inicio) = $3)
+           OR (EXTRACT(MONTH FROM fecha_fin) = $2 AND EXTRACT(YEAR FROM fecha_fin) = $3))`,
       [empleadoId, parseInt(mes), parseInt(anio)]
     );
-    if (result.rows.length === 0) return res.json({ dias: {} });
-    res.json(result.rows[0]);
+    res.json(result.rows); // Ahora devuelve un Array de horarios (semanas)
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al obtener el horario.' });
+    res.status(500).json({ error: 'Error al obtener los horarios semanales.' });
   }
 });
 
 router.post('/horarios', async (req, res) => {
-  const { empleado_id, mes, anio, dias } = req.body;
-  if (!empleado_id || !mes || !anio || !dias) {
-    return res.status(400).json({ error: 'Faltan datos del horario.' });
+  const { empleado_id, fecha_inicio, fecha_fin, dias } = req.body;
+  
+  if (!empleado_id || !fecha_inicio || !fecha_fin || !dias) {
+    return res.status(400).json({ error: 'Faltan datos del horario semanal.' });
   }
+
   try {
     const result = await pool.query(
-      `INSERT INTO horarios (empleado_id, mes, anio, dias)
+      `INSERT INTO horarios (empleado_id, fecha_inicio, fecha_fin, dias)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (empleado_id, mes, anio)
+       ON CONFLICT (empleado_id, fecha_inicio, fecha_fin)
        DO UPDATE SET dias = EXCLUDED.dias
        RETURNING *`,
-      [empleado_id, mes, anio, JSON.stringify(dias)]
+      [empleado_id, fecha_inicio, fecha_fin, JSON.stringify(dias)]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al guardar el horario.' });
+    res.status(500).json({ error: 'Error al guardar el horario semanal.' });
   }
 });
 

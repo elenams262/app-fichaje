@@ -682,6 +682,36 @@ const Admin = (() => {
   // ============================================================
   const DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
   let horarioActual = {};
+  let horariosCargados = [];
+  let semanasActuales = [];
+  let semanaSeleccionada = null;
+
+  const obtenerSemanasMes = (mes, anio) => {
+    const semanas = [];
+    let fecha = new Date(anio, mes - 1, 1);
+    let diaSemana = fecha.getDay() || 7;
+    fecha.setDate(fecha.getDate() - (diaSemana - 1));
+    
+    while (true) {
+      let inicio = new Date(fecha);
+      let fin = new Date(fecha);
+      fin.setDate(fin.getDate() + 6);
+      
+      if (inicio.getMonth() > (mes-1) && inicio.getFullYear() >= anio) break;
+      if (inicio.getFullYear() > anio) break;
+      if (inicio.getMonth() !== (mes-1) && fin.getMonth() !== (mes-1)) {
+          if(inicio.getTime() > new Date(anio, mes-1, 28).getTime()) break;
+      }
+
+      semanas.push({
+        inicioStr: inicio.toISOString().split('T')[0],
+        finStr: fin.toISOString().split('T')[0],
+        label: `Del ${inicio.getDate()} ${MESES[inicio.getMonth()].substring(0,3)} al ${fin.getDate()} ${MESES[fin.getMonth()].substring(0,3)}`
+      });
+      fecha.setDate(fecha.getDate() + 7);
+    }
+    return semanas;
+  };
 
   const initHorarioEditor = () => {
     const selMes = document.getElementById('horario-mes-sel');
@@ -708,22 +738,61 @@ const Admin = (() => {
 
   const cargarHorarioEditor = async () => {
     const empId = document.getElementById('horario-empleado-sel').value;
-    const mes = document.getElementById('horario-mes-sel').value;
-    const anio = document.getElementById('horario-anio-sel').value;
+    const mes = parseInt(document.getElementById('horario-mes-sel').value);
+    const anio = parseInt(document.getElementById('horario-anio-sel').value);
     if (!empId) { App.showToast('Selecciona un empleado', 'error'); return; }
 
     try {
-      const data = await API.getHorarioAdmin(empId, mes, anio);
-      horarioActual = data.dias || {};
-      renderHorarioEditor();
+      horariosCargados = await API.getHorarioAdmin(empId, mes, anio);
+      semanasActuales = obtenerSemanasMes(mes, anio);
+      
+      renderSelectorSemanas();
       document.getElementById('horario-editor').classList.remove('hidden');
-      document.getElementById('horario-actions').classList.remove('hidden');
+      document.getElementById('horario-actions').classList.add('hidden');
     } catch (e) { App.showToast(e.message, 'error'); }
+  };
+
+  const renderSelectorSemanas = () => {
+    let html = '<div class="horario-editor-title" style="margin-bottom:10px;">Selecciona la semana a configurar:</div><div class="semanas-grid" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom: 20px;">';
+    semanasActuales.forEach((sem, idx) => {
+       const hor = horariosCargados.find(h => h.fecha_inicio.split('T')[0] === sem.inicioStr && h.fecha_fin.split('T')[0] === sem.finStr);
+       const colorBadje = hor ? '#10b981' : '#ef4444';
+       const textoBadge = hor ? '✔ Configurada' : '✖ Sin asignar';
+       html += `<button class="btn-outline btn-semana" data-idx="${idx}" onclick="Admin.seleccionarSemana(${idx})" style="text-align:left; padding:8px 12px; height:auto; display:flex; flex-direction:column; align-items:flex-start;">
+          <strong>${sem.label}</strong>
+          <span style="color:${colorBadje};font-size:11px;margin-top:2px;">${textoBadge}</span>
+       </button>`;
+    });
+    html += '</div>';
+    
+    let contenedorSelector = document.getElementById('horario-semanas-container');
+    if(!contenedorSelector) {
+        document.getElementById('horario-editor').insertAdjacentHTML('beforebegin', '<div id="horario-semanas-container"></div>');
+        contenedorSelector = document.getElementById('horario-semanas-container');
+    }
+    contenedorSelector.innerHTML = html;
+    document.getElementById('horario-editor').innerHTML = ''; // Limpiar hasta que se escoja semana
+  };
+
+  const seleccionarSemana = (idx) => {
+     semanaSeleccionada = semanasActuales[idx];
+     document.querySelectorAll('.btn-semana').forEach(b => {
+         b.style.borderColor = 'var(--border-color)';
+         b.style.backgroundColor = 'transparent';
+     });
+     const btnActivo = document.querySelector(`.btn-semana[data-idx="${idx}"]`);
+     btnActivo.style.borderColor = 'var(--primary-color)';
+     btnActivo.style.backgroundColor = 'rgba(245,158,11,0.05)';
+
+     const hor = horariosCargados.find(h => h.fecha_inicio.split('T')[0] === semanaSeleccionada.inicioStr && h.fecha_fin.split('T')[0] === semanaSeleccionada.finStr);
+     horarioActual = hor ? hor.dias : {};
+     renderHorarioEditor();
+     document.getElementById('horario-actions').classList.remove('hidden');
   };
 
   const renderHorarioEditor = () => {
     const contenedor = document.getElementById('horario-editor');
-    contenedor.innerHTML = `<div class="horario-editor-title">Define el horario por día de la semana</div>` +
+    contenedor.innerHTML = `<div class="horario-editor-title">Define los días del ${semanaSeleccionada.label}</div>` +
       DIAS.map(dia => {
         const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
         const info = horarioActual[diaKey] || horarioActual[dia] || null;
@@ -748,9 +817,8 @@ const Admin = (() => {
   };
 
   const guardarHorario = async () => {
+    if(!semanaSeleccionada) return;
     const empId = document.getElementById('horario-empleado-sel').value;
-    const mes = parseInt(document.getElementById('horario-mes-sel').value);
-    const anio = parseInt(document.getElementById('horario-anio-sel').value);
 
     const dias = {};
     DIAS.forEach(dia => {
@@ -765,8 +833,14 @@ const Admin = (() => {
     });
 
     try {
-      await API.guardarHorario({ empleado_id: empId, mes, anio, dias });
-      App.showToast('Horario guardado correctamente', 'success');
+      await API.guardarHorario({ 
+        empleado_id: empId, 
+        fecha_inicio: semanaSeleccionada.inicioStr, 
+        fecha_fin: semanaSeleccionada.finStr, 
+        dias 
+      });
+      App.showToast('Horario semanal guardado correctamente', 'success');
+      cargarHorarioEditor(); // Recargar semanas
     } catch (e) { App.showToast(e.message, 'error'); }
   };
 
@@ -895,7 +969,7 @@ const Admin = (() => {
   return {
     init, cargarDashboard,
     editarCentroModal, eliminarCentroConfirm,
-    editarEmpleadoModal, toggleDia,
+    editarEmpleadoModal, toggleDia, seleccionarSemana,
     guardarLicenciaModal, eliminarLicenciaModal
   };
 })();

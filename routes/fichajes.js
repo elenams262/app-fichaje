@@ -153,15 +153,18 @@ router.get('/horario', soloEmpleado, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT * FROM horarios WHERE empleado_id=$1 AND mes=$2 AND anio=$3',
-      [empleadoId, mes, anio]
+      `SELECT * FROM horarios 
+       WHERE empleado_id = $1 
+         AND ((EXTRACT(MONTH FROM fecha_inicio) = $2 AND EXTRACT(YEAR FROM fecha_inicio) = $3)
+           OR (EXTRACT(MONTH FROM fecha_fin) = $2 AND EXTRACT(YEAR FROM fecha_fin) = $3))`,
+      [empleadoId, parseInt(mes), parseInt(anio)]
     );
 
     if (result.rows.length === 0) {
-      return res.json({ dias: null, mensaje: 'No tienes horario asignado para este mes.' });
+      return res.json([]);
     }
 
-    res.json(result.rows[0]);
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener el horario.' });
