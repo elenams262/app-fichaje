@@ -186,8 +186,11 @@ const Empleado = (() => {
     contenedor.innerHTML = '<div class="loading-inline"><div class="spinner"></div></div>';
 
     try {
-      // Pedir todas las semanas que tocan en este mes
-      const dataSemanas = await API.getHorario(mes, anio);
+      // Pedir todas las semanas y licencias que tocan en este mes
+      const [dataSemanas, dataLicencias] = await Promise.all([
+        API.getHorario(mes, anio),
+        API.getLicenciasEmpleado()
+      ]);
       
       const primerDia = new Date(anio, mes - 1, 1);
       const ultimoDia = new Date(anio, mes, 0); 
@@ -229,6 +232,13 @@ const Empleado = (() => {
          const semAplica = Array.isArray(dataSemanas) ? dataSemanas.find(s => {
             return strDate >= s.fecha_inicio.split('T')[0] && strDate <= s.fecha_fin.split('T')[0];
          }) : null;
+
+         // Buscar si hay licencia este día
+         const licAplica = Array.isArray(dataLicencias) ? dataLicencias.find(l => {
+            const start = l.fecha_inicio.split('T')[0];
+            const end = l.fecha_fin.split('T')[0];
+            return strDate >= start && strDate <= end;
+         }) : null;
          
          let contenidoHoras = `<span style="color:var(--text-dim)">Libre</span>`;
          let bgColor = 'var(--bg-card)';
@@ -241,6 +251,13 @@ const Empleado = (() => {
                   contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>${obsHtml}`;
                   bgColor = 'var(--bg-body)';
               }
+         }
+
+         // Priorizar visualización de licencias
+         if(licAplica) {
+            const icon = licAplica.causa.toLowerCase().includes('vaca') ? '🏝️' : '🏥';
+            contenidoHoras = `<span style="color:var(--accent); font-weight:700; font-size:10px;">${icon} ${licAplica.causa}</span>`;
+            bgColor = 'var(--accent-light)';
          }
 
          const isHoy = strDate === localHoy;
