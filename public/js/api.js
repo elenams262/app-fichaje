@@ -58,6 +58,7 @@ const API = (() => {
     crearCentro: (data) => request('POST', '/admin/centros', data),
     editarCentro: (id, data) => request('PUT', `/admin/centros/${id}`, data),
     eliminarCentro: (id) => request('DELETE', `/admin/centros/${id}`),
+    getCuadranteCentro: (id, mes, anio) => request('GET', `/admin/centros/${id}/cuadrante/${mes}/${anio}`),
 
     // EMPLEADOS (Admin)
     getEmpleados: () => request('GET', '/admin/empleados'),

@@ -58,6 +58,46 @@ router.put('/centros/:id', async (req, res) => {
   }
 });
 
+router.get('/centros/:id/cuadrante/:mes/:anio', async (req, res) => {
+  const { id, mes, anio } = req.params;
+  
+  try {
+    const empResult = await pool.query(
+      'SELECT id, nombre, apellidos, puesto FROM empleados WHERE centro_id = $1 AND activo = true ORDER BY apellidos, nombre',
+      [id]
+    );
+    const empleadosCentro = empResult.rows;
+
+    if(empleadosCentro.length === 0) {
+        return res.json([]);
+    }
+    
+    const empIds = empleadosCentro.map(e => e.id);
+    
+    const horResult = await pool.query(
+      `SELECT * FROM horarios 
+       WHERE empleado_id = ANY($1::uuid[])
+         AND ((EXTRACT(MONTH FROM fecha_inicio) = $2 AND EXTRACT(YEAR FROM fecha_inicio) = $3)
+           OR (EXTRACT(MONTH FROM fecha_fin) = $2 AND EXTRACT(YEAR FROM fecha_fin) = $3))`
+      ,
+      [empIds, parseInt(mes), parseInt(anio)]
+    );
+    const todosHorarios = horResult.rows;
+
+    const respuesta = empleadosCentro.map(emp => {
+       return {
+           empleado: emp,
+           horarios: todosHorarios.filter(h => h.empleado_id === emp.id)
+       };
+    });
+
+    res.json(respuesta);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al generar el cuadrante del centro.' });
+  }
+});
+
 router.delete('/centros/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM centros WHERE id=$1', [req.params.id]);

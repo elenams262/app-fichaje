@@ -174,6 +174,7 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-c-datos">🏠 Datos del centro</button>
       <button class="modal-tab" data-tab-target="tab-c-horario">🕒 Horario</button>
+      ${centro ? `<button class="modal-tab" data-tab-target="tab-c-cuadrante">📅 Cuadrante mensual</button>` : ''}
     </div>
     <div id="tab-c-datos" class="modal-tab-panel active" style="padding-top:15px;">
       <form id="form-centro" class="form">
@@ -193,7 +194,23 @@ const Admin = (() => {
     <div id="tab-c-horario" class="modal-tab-panel" style="padding-top:15px;">
       <div class="horario-editor-title">Define el horario de apertura del centro</div>
       ${rowsHorario}
-    </div>`;
+    </div>
+    ${centro ? `
+    <div id="tab-c-cuadrante" class="modal-tab-panel" style="padding-top:15px; margin-bottom: -15px;">
+      <div class="horario-editor-title">Vista de cuadrantes de la plantilla del centro</div>
+      <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
+        <select id="cua-mes" class="select-full" style="width:120px;">
+          ${MESES.map((m,i) => `<option value="${i+1}" ${i===new Date().getMonth()?'selected':''}>${m}</option>`).join('')}
+        </select>
+        <select id="cua-anio" class="select-full" style="width:100px;">
+          ${[new Date().getFullYear()-1, new Date().getFullYear(), new Date().getFullYear()+1].map(a => `<option value="${a}" ${a===new Date().getFullYear()?'selected':''}>${a}</option>`).join('')}
+        </select>
+        <button class="btn-primary" type="button" onclick="Admin.cargarCuadranteCentro('${centro.id}')" style="padding: 10px;">Cargar Cuadrante</button>
+      </div>
+      <div id="cua-container" class="custom-scrollbar" style="overflow-x:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; min-height:100px; padding-bottom:10px;">
+        <div class="empty-state"><p>Selecciona un mes y pulsa Cargar Cuadrante</p></div>
+      </div>
+    </div>` : ''}`;
   };
 
   const modalNuevoCentro = (centro = null) => {
@@ -240,6 +257,76 @@ const Admin = (() => {
       ]
     );
     setTimeout(initModalTabs, 50);
+  };
+
+  const cargarCuadranteCentro = async (centroId) => {
+    const mes = document.getElementById('cua-mes').value;
+    const anio = document.getElementById('cua-anio').value;
+    const contenedor = document.getElementById('cua-container');
+    
+    contenedor.innerHTML = '<div style="padding: 20px;" class="loading-inline"><div class="spinner"></div></div>';
+    
+    try {
+      const datosGrid = await API.getCuadranteCentro(centroId, mes, anio);
+      if(datosGrid.length === 0) {
+         contenedor.innerHTML = '<div class="empty-state"><p>No hay empleados activos asignados a este centro.</p></div>';
+         return;
+      }
+
+      const numDias = new Date(anio, mes, 0).getDate();
+      const nomDias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+      
+      let html = `<table style="width:100%; border-collapse:collapse; font-size:11px; text-align:center; min-width:${numDias*36+150}px;">`;
+      
+      html += `<thead><tr>
+         <th style="padding:8px; border:1px solid var(--border-color); border-top:none; border-left:none; text-align:left; background:var(--bg-body); position:sticky; left:0; z-index:2; min-width:140px; box-shadow: 2px 0 5px rgba(0,0,0,0.05);">Empleado</th>`;
+      for(let d=1; d<=numDias; d++) {
+         const ds = new Date(anio, mes-1, d).getDay();
+         const color = (ds===0||ds===6) ? 'color:var(--danger-color)' : 'color:var(--text-color)';
+         const bStyle = d === numDias ? 'border-right:none;' : '';
+         html += `<th style="padding:4px; border:1px solid var(--border-color); ${bStyle} border-top:none; background:var(--bg-body);"><div style="${color}; font-weight:normal; font-size:10px;">${nomDias[ds]}</div><div>${d}</div></th>`;
+      }
+      html += `</tr></thead><tbody>`;
+      
+      const fullDiasArray = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+
+      datosGrid.forEach((fila, fidx) => {
+         const emp = fila.empleado;
+         const ultimaFila = fidx === datosGrid.length - 1 ? 'border-bottom:none;' : '';
+         html += `<tr><td style="padding:8px; border:1px solid var(--border-color); border-left:none; ${ultimaFila} text-align:left; font-weight:600; position:sticky; left:0; background:var(--bg-card); z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.05); color:var(--text-color)">${emp.apellidos}, <span style="font-weight:normal">${emp.nombre}</span></td>`;
+         
+         for(let d=1; d<=numDias; d++) {
+            const dateObj = new Date(Date.UTC(anio, mes-1, d));
+            const strDate = dateObj.toISOString().split('T')[0];
+            const numDS = dateObj.getUTCDay();
+            const diaKey = fullDiasArray[numDS];
+            
+            const hAplica = fila.horarios.find(s => strDate >= s.fecha_inicio.split('T')[0] && strDate <= s.fecha_fin.split('T')[0]);
+            let casillaTxt = '<span style="color:var(--border-color); cursor:default;" title="Libre">L</span>';
+            let bg = numDS === 0 || numDS === 6 ? 'background: rgba(0,0,0,0.02);' : '';
+            
+            if(hAplica && hAplica.dias) {
+               const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
+               const tur = hAplica.dias[k] || hAplica.dias[diaKey];
+               if(tur) {
+                  const e = tur.entrada.split(':')[0];
+                  const s = tur.salida.split(':')[0];
+                  casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${tur.entrada} - ${tur.salida}">${e}-${s}</strong>`;
+                  bg = 'background:rgba(16,185,129,0.08);';
+               }
+            }
+            const bStyle2 = d === numDias ? 'border-right:none;' : '';
+            html += `<td style="padding:4px; border:1px solid var(--border-color); ${bStyle2} ${ultimaFila} ${bg}">${casillaTxt}</td>`;
+         }
+         html += `</tr>`;
+      });
+      
+      html += `</tbody></table>`;
+      contenedor.innerHTML = html;
+      
+    } catch(err) {
+      contenedor.innerHTML = `<div class="empty-state"><p>Error al generar el cuadrante: ${err.message}</p></div>`;
+    }
   };
 
   const editarCentroModal = async (id) => {
@@ -968,7 +1055,7 @@ const Admin = (() => {
 
   return {
     init, cargarDashboard,
-    editarCentroModal, eliminarCentroConfirm,
+    editarCentroModal, eliminarCentroConfirm, cargarCuadranteCentro,
     editarEmpleadoModal, toggleDia, seleccionarSemana,
     guardarLicenciaModal, eliminarLicenciaModal
   };
