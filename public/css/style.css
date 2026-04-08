@@ -977,3 +977,79 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+/* ============================================================
+   LICENCIAS EMPLEADO
+   ============================================================ */
+.licencias-grid-emp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.licencia-card-emp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.licencia-card-emp.active {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+
+.licencia-card-emp.future {
+  border-color: var(--accent);
+}
+
+.licencia-card-emp.past {
+  opacity: 0.7;
+}
+
+.lic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lic-causa {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lic-fechas {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.lic-status-badge {
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-3);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.active .lic-status-badge {
+  background: var(--green);
+  color: #0f1724;
+}
+
+.future .lic-status-badge {
+  background: var(--accent);
+  color: #0f1724;
+}
+
+.past .lic-status-badge {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}

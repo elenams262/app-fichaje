@@ -267,6 +267,62 @@ const Empleado = (() => {
      cargarHorario(m, a);
   };
 
+  // Cargar licencias del empleado
+  const cargarLicencias = async () => {
+    const contenedor = document.getElementById('licencias-list');
+    contenedor.innerHTML = '<div class="loading-inline"><div class="spinner"></div></div>';
+
+    try {
+      const data = await API.getLicenciasEmpleado();
+      if (!data || data.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏖️</div><p>No tienes licencias o vacaciones registradas</p></div>';
+        return;
+      }
+
+      const ahora = new Date();
+      ahora.setHours(0, 0, 0, 0);
+
+      const html = data.map(lic => {
+        const inicio = new Date(lic.fecha_inicio);
+        const fin = new Date(lic.fecha_fin);
+        inicio.setHours(0, 0, 0, 0);
+        fin.setHours(0, 0, 0, 0);
+
+        let estadoClass = '';
+        let estadoTxt = '';
+
+        if (ahora > fin) {
+          estadoClass = 'past';
+          estadoTxt = 'Pasada';
+        } else if (ahora >= inicio && ahora <= fin) {
+          estadoClass = 'active';
+          estadoTxt = 'Activa ahora';
+        } else {
+          estadoClass = 'future';
+          estadoTxt = 'Próxima';
+        }
+
+        const fInicioStr = inicio.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        const fFinStr = fin.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        return `
+          <div class="licencia-card-emp ${estadoClass}">
+            <div class="lic-info">
+              <span class="lic-causa">${lic.causa}</span>
+              <span class="lic-fechas">${fInicioStr} — ${fFinStr}</span>
+            </div>
+            <div class="lic-status-badge">${estadoTxt}</div>
+          </div>
+        `;
+      }).join('');
+
+      contenedor.innerHTML = `<div class="licencias-grid-emp">${html}</div>`;
+
+    } catch (e) {
+      contenedor.innerHTML = `<div class="empty-state"><p>Error al cargar licencias: ${e.message}</p></div>`;
+    }
+  };
+
   // Navegación entre tabs del empleado
   const initBottomNav = () => {
     document.querySelectorAll('.bottom-nav-item').forEach(btn => {
@@ -280,6 +336,7 @@ const Empleado = (() => {
         // Cargar datos según la pestaña
         if (tabId === 'tab-historial') cargarHistorial();
         if (tabId === 'tab-horario') cargarHorario();
+        if (tabId === 'tab-licencias') cargarLicencias();
       });
     });
   };

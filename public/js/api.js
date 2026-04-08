@@ -52,6 +52,7 @@ const API = (() => {
       request('GET', `/fichajes/historial?mes=${mes}&anio=${anio}`),
     getHorario: (mes, anio) =>
       request('GET', `/fichajes/horario?mes=${mes}&anio=${anio}`),
+    getLicenciasEmpleado: () => request('GET', '/fichajes/licencias'),
 
     // CENTROS (Admin)
     getCentros: () => request('GET', '/admin/centros'),

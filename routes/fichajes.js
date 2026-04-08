@@ -171,4 +171,22 @@ router.get('/horario', soloEmpleado, async (req, res) => {
   }
 });
 
+// ============================================================
+// GET /api/fichajes/licencias
+// El empleado ve sus licencias y vacaciones
+// ============================================================
+router.get('/licencias', soloEmpleado, async (req, res) => {
+  const empleadoId = req.usuario.id;
+  try {
+    const result = await pool.query(
+      'SELECT id, anio, causa, fecha_inicio, fecha_fin FROM licencias_permisos WHERE empleado_id = $1 ORDER BY fecha_inicio DESC',
+      [empleadoId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener las licencias.' });
+  }
+});
+
 module.exports = router;
