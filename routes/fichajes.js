@@ -14,6 +14,17 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
   const hoy = ahora.toISOString().split('T')[0]; // "2026-04-07"
 
   try {
+    // Comprobar si está de licencia
+    const licenciaResult = await pool.query(
+      `SELECT causa FROM licencias_permisos 
+       WHERE empleado_id = $1 AND fecha_inicio <= $2 AND fecha_fin >= $2`,
+      [empleadoId, hoy]
+    );
+
+    if (licenciaResult.rows.length > 0) {
+      return res.status(403).json({ error: `No puedes fichar: Estás en periodo de ${licenciaResult.rows[0].causa}.` });
+    }
+
     // Ver el último fichaje del empleado de HOY
     const ultimoFichaje = await pool.query(
       `SELECT tipo FROM fichajes 
@@ -59,6 +70,14 @@ router.get('/estado', soloEmpleado, async (req, res) => {
   const hoy = new Date().toISOString().split('T')[0];
 
   try {
+    // Comprobar licencia hoy
+    const licenciaResult = await pool.query(
+      `SELECT causa FROM licencias_permisos 
+       WHERE empleado_id = $1 AND fecha_inicio <= $2 AND fecha_fin >= $2`,
+      [empleadoId, hoy]
+    );
+    const licenciaActual = licenciaResult.rows.length > 0 ? licenciaResult.rows[0].causa : null;
+
     const result = await pool.query(
       `SELECT tipo, timestamp FROM fichajes 
        WHERE empleado_id = $1 AND fecha = $2 
@@ -81,7 +100,8 @@ router.get('/estado', soloEmpleado, async (req, res) => {
       estaEnTrabajo,
       proximoTipo,
       ultimo: result.rows[0] || null,
-      fichajesHoy: fichajesToday.rows
+      fichajesHoy: fichajesToday.rows,
+      licenciaActual // Se enviará null o el string de la causa
     });
 
   } catch (err) {

@@ -315,4 +315,52 @@ router.get('/fichajes', async (req, res) => {
   }
 });
 
+// ============================================================
+// LICENCIAS Y PERMISOS
+// ============================================================
+
+router.get('/licencias/:empleadoId', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM licencias_permisos WHERE empleado_id = $1 ORDER BY fecha_inicio DESC',
+      [req.params.empleadoId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener las licencias.' });
+  }
+});
+
+router.post('/licencias', async (req, res) => {
+  const { empleado_id, anio, causa, fecha_inicio, fecha_fin } = req.body;
+  
+  if (!empleado_id || !anio || !causa || !fecha_inicio || !fecha_fin) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios para la licencia.' });
+  }
+
+  // Verificar solapamiento básico (si se necesita en un futuro, se añade validación más estricta aquí)
+  try {
+    const result = await pool.query(
+      `INSERT INTO licencias_permisos (empleado_id, anio, causa, fecha_inicio, fecha_fin) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [empleado_id, anio, causa, fecha_inicio, fecha_fin]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear la licencia.' });
+  }
+});
+
+router.delete('/licencias/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM licencias_permisos WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Licencia eliminada.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar la licencia.' });
+  }
+});
+
 module.exports = router;

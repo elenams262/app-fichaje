@@ -66,6 +66,21 @@ CREATE TABLE IF NOT EXISTS horarios (
 );
 
 -- ============================================================
+-- TABLA: licencias_permisos
+-- Historial de ausencias por vacaciones, bajas, u otros permisos.
+-- Impide el fichaje durante estos periodos.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS licencias_permisos (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  empleado_id  UUID REFERENCES empleados(id) ON DELETE CASCADE NOT NULL,
+  anio         INTEGER NOT NULL,
+  causa        VARCHAR(100) NOT NULL,
+  fecha_inicio DATE NOT NULL,
+  fecha_fin    DATE NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- TABLA: fichajes
 -- Registro de cada entrada y salida
 -- ============================================================
@@ -83,6 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_fichajes_empleado ON fichajes(empleado_id);
 CREATE INDEX IF NOT EXISTS idx_fichajes_fecha ON fichajes(fecha);
 CREATE INDEX IF NOT EXISTS idx_empleados_centro ON empleados(centro_id);
 CREATE INDEX IF NOT EXISTS idx_horarios_empleado ON horarios(empleado_id);
+CREATE INDEX IF NOT EXISTS idx_licencias_empleado_fechas ON licencias_permisos(empleado_id, fecha_inicio, fecha_fin);
 
 -- ============================================================
 -- DATO INICIAL: Administrador por defecto

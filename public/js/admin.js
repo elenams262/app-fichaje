@@ -340,7 +340,7 @@ const Admin = (() => {
     document.getElementById('btn-nuevo-empleado').onclick = () => modalNuevoEmpleado();
   };
 
-  const getFormEmpleado = (emp = null, contrato = null) => {
+  const getFormEmpleado = (emp = null, contrato = null, licencias = []) => {
     const centrosOpts = centros.map(c =>
       `<option value="${c.id}" ${(emp?.centro_id === c.id || contrato?.centro_id === c.id) ? 'selected' : ''}>${c.nombre}</option>`
     ).join('');
@@ -349,6 +349,7 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-personal">👤 Datos personales</button>
       <button class="modal-tab" data-tab-target="tab-contrato">📄 Contrato</button>
+      ${emp ? `<button class="modal-tab" data-tab-target="tab-licencias">⏸️ Permisos</button>` : ''}
     </div>
 
     <!-- TAB 1: DATOS PERSONALES -->
@@ -474,7 +475,51 @@ const Admin = (() => {
           </div>
         </div>
       </form>
-    </div>`;
+    </div>
+    
+    <!-- TAB 3: LICENCIAS Y PERMISOS -->
+    ${emp ? `
+    <div id="tab-licencias" class="modal-tab-panel">
+      <div style="margin-bottom:15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+        <h4 style="margin-bottom: 10px; font-size: 14px;">Añadir licencia o permiso</h4>
+        <div class="form-row">
+          <div class="form-group">
+             <label>Causa</label>
+             <select id="lic-causa" class="select-full">
+               <option value="Incapacidad temporal">Incapacidad temporal</option>
+               <option value="Permiso compensación horas">Permiso compensación horas</option>
+               <option value="Permiso retribuido recuperable">Permiso retribuido recuperable</option>
+               <option value="Vacaciones">Vacaciones</option>
+             </select>
+          </div>
+          <div class="form-group">
+            <label>Año</label>
+            <input type="number" id="lic-anio" value="${new Date().getFullYear()}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Inicio</label><input type="date" id="lic-inicio" /></div>
+          <div class="form-group"><label>Fin</label><input type="date" id="lic-fin" /></div>
+        </div>
+        <button type="button" class="btn-primary btn-sm" onclick="Admin.guardarLicenciaModal('${emp.id}')">Añadir Licencia</button>
+      </div>
+      <div>
+        <h4 style="font-size: 14px; margin-bottom: 10px;">Licencias registradas</h4>
+        ${licencias.length === 0 ? '<p style="color:var(--text-dim);font-size:13px">No hay licencias registradas para este empleado.</p>' : 
+        `<table style="font-size:12px;">
+          <thead><tr><th>Año</th><th>Causa</th><th>Fechas</th><th></th></tr></thead>
+          <tbody>
+            ${licencias.map(l => `<tr>
+              <td>${l.anio}</td><td>${l.causa}</td>
+              <td class="td-muted">${l.fecha_inicio.split('T')[0]} a ${l.fecha_fin.split('T')[0]}</td>
+              <td style="text-align: right;"><button type="button" class="btn-icon" onclick="Admin.eliminarLicenciaModal('${l.id}', '${emp.id}')" title="Eliminar licencia"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg></button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`
+        }
+      </div>
+    </div>` : ''}
+    `;
   };
 
   // Leer los datos del formulario de empleado
@@ -538,13 +583,21 @@ const Admin = (() => {
     setTimeout(initModalTabs, 50);
   };
 
-  const editarEmpleadoModal = async (id) => {
+  const editarEmpleadoModal = async (id, tabActiva = 'tab-personal') => {
     const emp = empleados.find(e => e.id === id);
     if (!emp) return;
-    // Cargar contrato existente en paralelo
+    // Cargar contrato y licencias existente en paralelo
     let contrato = null;
-    try { contrato = await API.getContrato(id); } catch (_) {}
-    App.openModal('Editar empleado', getFormEmpleado(emp, contrato), [
+    let licencias = [];
+    try { 
+      const res = await Promise.all([
+        API.getContrato(id).catch(() => null),
+        API.getLicencias(id).catch(() => [])
+      ]);
+      contrato = res[0];
+      licencias = res[1] || [];
+    } catch (_) {}
+    App.openModal('Editar empleado', getFormEmpleado(emp, contrato, licencias), [
       { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
       { text: 'Guardar cambios', cls: 'btn-primary', action: async () => {
         const payload = leerDatosEmpleado(true);
@@ -560,7 +613,55 @@ const Admin = (() => {
         } catch (e) { App.showToast(e.message, 'error'); }
       }}
     ]);
-    setTimeout(initModalTabs, 50);
+    setTimeout(() => {
+      initModalTabs();
+      if (tabActiva !== 'tab-personal') {
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
+        const targetTabBtn = document.querySelector(`[data-tab-target="${tabActiva}"]`);
+        const targetPanel = document.getElementById(tabActiva);
+        if (targetTabBtn && targetPanel) {
+          targetTabBtn.classList.add('active');
+          targetPanel.classList.add('active');
+        }
+      }
+    }, 50);
+  };
+
+  const guardarLicenciaModal = async (empleadoId) => {
+    const causa = document.getElementById('lic-causa').value;
+    const anio = document.getElementById('lic-anio').value;
+    const inicio = document.getElementById('lic-inicio').value;
+    const fin = document.getElementById('lic-fin').value;
+
+    if (!causa || !anio || !inicio || !fin) {
+      App.showToast('Rellena todos los campos de la licencia', 'error');
+      return;
+    }
+    try {
+      await API.crearLicencia({
+        empleado_id: empleadoId,
+        anio: parseInt(anio),
+        causa,
+        fecha_inicio: inicio,
+        fecha_fin: fin
+      });
+      App.showToast('Licencia añadida', 'success');
+      editarEmpleadoModal(empleadoId, 'tab-licencias');
+    } catch (e) {
+      App.showToast(e.message, 'error');
+    }
+  };
+
+  const eliminarLicenciaModal = async (id, empleadoId) => {
+    if(!confirm("¿Seguro que deseas eliminar esta licencia?")) return;
+    try {
+      await API.eliminarLicencia(id);
+      App.showToast('Licencia eliminada', 'success');
+      editarEmpleadoModal(empleadoId, 'tab-licencias');
+    } catch (e) {
+      App.showToast(e.message, 'error');
+    }
   };
 
   const actualizarSelectEmpleados = () => {
@@ -794,6 +895,7 @@ const Admin = (() => {
   return {
     init, cargarDashboard,
     editarCentroModal, eliminarCentroConfirm,
-    editarEmpleadoModal, toggleDia
+    editarEmpleadoModal, toggleDia,
+    guardarLicenciaModal, eliminarLicenciaModal
   };
 })();

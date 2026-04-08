@@ -76,6 +76,11 @@ const API = (() => {
       request('GET', `/admin/horarios/${empleadoId}/${mes}/${anio}`),
     guardarHorario: (data) => request('POST', '/admin/horarios', data),
 
+    // LICENCIAS (Admin)
+    getLicencias: (empleadoId) => request('GET', `/admin/licencias/${empleadoId}`),
+    crearLicencia: (data) => request('POST', '/admin/licencias', data),
+    eliminarLicencia: (id) => request('DELETE', `/admin/licencias/${id}`),
+
     // FICHAJES (Admin)
     getFichajesAdmin: (filtros = {}) => {
       const params = new URLSearchParams(filtros).toString();
