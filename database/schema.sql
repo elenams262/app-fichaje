@@ -101,6 +101,19 @@ CREATE INDEX IF NOT EXISTS idx_horarios_empleado ON horarios(empleado_id);
 CREATE INDEX IF NOT EXISTS idx_licencias_empleado_fechas ON licencias_permisos(empleado_id, fecha_inicio, fecha_fin);
 
 -- ============================================================
+-- SEGURIDAD (Row Level Security)
+-- Evita vulnerabilidades (advertencias de Supabase) ignorando
+-- la API anónima pública y requiriendo acceso con service_role.
+-- ============================================================
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE centros ENABLE ROW LEVEL SECURITY;
+ALTER TABLE empleados ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contratos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE horarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE licencias_permisos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fichajes ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
 -- DATO INICIAL: Administrador por defecto
 -- IMPORTANTE: Cambiar CIF y contraseña después de crear las tablas
 -- La contraseña se almacenará hasheada desde la app, pero aquí
