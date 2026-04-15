@@ -11,7 +11,25 @@ const router = express.Router();
 router.post('/fichar', soloEmpleado, async (req, res) => {
   const empleadoId = req.usuario.id;
   const ahora = new Date();
-  const hoy = ahora.toISOString().split('T')[0]; // "2026-04-07"
+  
+  // ============================================================
+  // GESTIÓN DE ZONA HORARIA (España/Madrid)
+  // ============================================================
+  const tzn = 'Europe/Madrid';
+  
+  // 1. Obtener la fecha actual en formato YYYY-MM-DD en Madrid
+  const formatterDate = new Intl.DateTimeFormat('en-CA', { timeZone: tzn, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const hoy = formatterDate.format(ahora); 
+
+  // 2. Obtener el día de la semana en español en Madrid
+  const formatterDay = new Intl.DateTimeFormat('es-ES', { timeZone: tzn, weekday: 'long' });
+  const diaKey = formatterDay.format(ahora).toLowerCase(); // "lunes", "martes", "miércoles"...
+
+  // 3. Obtener la hora actual en Madrid (HH:MM)
+  const formatterTime = new Intl.DateTimeFormat('es-ES', { timeZone: tzn, hour: '2-digit', minute: '2-digit', hour12: false });
+  const horaActualStr = formatterTime.format(ahora);
+  const [horaHoid, minHoy] = horaActualStr.split(':').map(Number);
+  const horaActualNum = horaHoid * 60 + minHoy;
 
   try {
     // 1. Comprobar si está de licencia
@@ -32,11 +50,12 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
       [empleadoId, hoy]
     );
 
-    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const diaActual = diasSemana[ahora.getDay()];
-    const diaKey = diaActual === 'miercoles' ? 'miércoles' : diaActual;
+    // Compatibilidad con claves sin tilde (por si acaso)
+    const diaSinTilde = diaKey.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
-    const horarioHoy = horarioResult.rows.length > 0 ? (horarioResult.rows[0].dias[diaKey] || horarioResult.rows[0].dias[diaActual]) : null;
+    const horarioHoy = horarioResult.rows.length > 0 
+      ? (horarioResult.rows[0].dias[diaKey] || horarioResult.rows[0].dias[diaSinTilde]) 
+      : null;
 
     if (!horarioHoy) {
       return res.status(400).json({ error: 'No puedes fichar: No tienes un turno programado para hoy.' });
@@ -59,9 +78,6 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
     }
 
     // 3. Validar hora según el tipo de fichaje
-    const [horaHoid, minHoy] = [ahora.getHours(), ahora.getMinutes()];
-    const horaActualNum = horaHoid * 60 + minHoy;
-
     if (tipo === 'entrada') {
       const [hEntrada, mEntrada] = horarioHoy.entrada.split(':').map(Number);
       const horaEntradaNum = hEntrada * 60 + mEntrada;
