@@ -14,7 +14,7 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
   const hoy = ahora.toISOString().split('T')[0]; // "2026-04-07"
 
   try {
-    // Comprobar si está de licencia
+    // 1. Comprobar si está de licencia
     const licenciaResult = await pool.query(
       `SELECT causa FROM licencias_permisos 
        WHERE empleado_id = $1 AND fecha_inicio <= $2 AND fecha_fin >= $2`,
@@ -23,6 +23,23 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
 
     if (licenciaResult.rows.length > 0) {
       return res.status(400).json({ error: `No puedes fichar: Estás en periodo de ${licenciaResult.rows[0].causa}.` });
+    }
+
+    // 2. Obtener el horario del empleado para hoy
+    const horarioResult = await pool.query(
+      `SELECT dias FROM horarios 
+       WHERE empleado_id = $1 AND fecha_inicio <= $2 AND fecha_fin >= $2`,
+      [empleadoId, hoy]
+    );
+
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const diaActual = diasSemana[ahora.getDay()];
+    const diaKey = diaActual === 'miercoles' ? 'miércoles' : diaActual;
+    
+    const horarioHoy = horarioResult.rows.length > 0 ? (horarioResult.rows[0].dias[diaKey] || horarioResult.rows[0].dias[diaActual]) : null;
+
+    if (!horarioHoy) {
+      return res.status(400).json({ error: 'No puedes fichar: No tienes un turno programado para hoy.' });
     }
 
     // Ver el último fichaje del empleado de HOY
@@ -39,6 +56,28 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
       tipo = 'entrada';
     } else {
       tipo = 'salida';
+    }
+
+    // 3. Validar hora según el tipo de fichaje
+    const [horaHoid, minHoy] = [ahora.getHours(), ahora.getMinutes()];
+    const horaActualNum = horaHoid * 60 + minHoy;
+
+    if (tipo === 'entrada') {
+      const [hEntrada, mEntrada] = horarioHoy.entrada.split(':').map(Number);
+      const horaEntradaNum = hEntrada * 60 + mEntrada;
+      if (horaActualNum < horaEntradaNum) {
+        return res.status(400).json({ 
+          error: `No puedes fichar todavía. Tu hora de entrada es a las ${horarioHoy.entrada}.` 
+        });
+      }
+    } else {
+      const [hSalida, mSalida] = horarioHoy.salida.split(':').map(Number);
+      const horaSalidaNum = hSalida * 60 + mSalida;
+      if (horaActualNum < horaSalidaNum) {
+        return res.status(400).json({ 
+          error: `No puedes fichar la salida todavía. Tu hora de salida es a las ${horarioHoy.salida}.` 
+        });
+      }
     }
 
     // Registrar el fichaje
