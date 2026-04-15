@@ -449,6 +449,7 @@ select option { background: var(--bg-2); }
 }
 .fichar-status-badge.dentro { background: var(--green-light); border-color: rgba(16,185,129,0.3); color: var(--green); }
 .fichar-status-badge.fuera { background: var(--bg-3); border-color: var(--border); color: var(--text-muted); }
+.fichar-status-badge.completado { background: var(--blue-light); border-color: rgba(59,130,246,0.3); color: var(--blue); }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse-dot 2s ease-in-out infinite; }
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
@@ -493,6 +494,12 @@ select option { background: var(--bg-2); }
   border-color: var(--red);
   box-shadow: 0 0 40px rgba(239,68,68,0.3);
   color: var(--red);
+}
+.btn-fichar.completado .btn-fichar-inner {
+  background: radial-gradient(circle at center, rgba(59,130,246,0.2), transparent);
+  border-color: var(--blue);
+  box-shadow: 0 0 40px rgba(59,130,246,0.3);
+  color: var(--blue);
 }
 .btn-fichar:hover:not(:disabled) { transform: scale(1.05); }
 .btn-fichar:active:not(:disabled) { transform: scale(0.97); }

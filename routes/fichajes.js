@@ -71,10 +71,15 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
 
     // Determinar el tipo: si el último fue "entrada" → ahora es "salida" y viceversa
     let tipo;
-    if (ultimoFichaje.rows.length === 0 || ultimoFichaje.rows[0].tipo === 'salida') {
+    if (ultimoFichaje.rows.length === 0) {
       tipo = 'entrada';
-    } else {
+    } else if (ultimoFichaje.rows[0].tipo === 'entrada') {
       tipo = 'salida';
+    } else {
+      // Si el último ya fue salida, no permitimos volver a fichar en el mismo día
+      return res.status(400).json({ 
+        error: 'Ya has completado tu jornada de hoy. Solo se permite un fichaje de entrada y salida al día.' 
+      });
     }
 
     // 3. Validar hora según el tipo de fichaje
@@ -148,13 +153,16 @@ router.get('/estado', soloEmpleado, async (req, res) => {
     );
 
     // Estado actual: si el último fichaje fue "entrada" → está dentro
-    const estaEnTrabajo = result.rows.length > 0 && result.rows[0].tipo === 'entrada';
-    const proximoTipo = estaEnTrabajo ? 'salida' : 'entrada';
+    const ultimo = result.rows[0];
+    const estaEnTrabajo = ultimo && ultimo.tipo === 'entrada';
+    const turnoCompletado = ultimo && ultimo.tipo === 'salida';
+    const proximoTipo = estaEnTrabajo ? 'salida' : (turnoCompletado ? null : 'entrada');
 
     res.json({
       estaEnTrabajo,
+      turnoCompletado,
       proximoTipo,
-      ultimo: result.rows[0] || null,
+      ultimo: ultimo || null,
       fichajesHoy: fichajesToday.rows,
       licenciaActual // Se enviará null o el string de la causa
     });

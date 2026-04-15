@@ -69,18 +69,25 @@ const Empleado = (() => {
     const btn = document.getElementById('btn-fichar');
     const btnText = document.getElementById('btn-fichar-text');
 
-    if (data.estaEnTrabajo) {
+    if (data.turnoCompletado) {
+      badge.className = 'fichar-status-badge completado';
+      statusText.textContent = 'Jornada completada';
+      btn.className = 'btn-fichar completado';
+      btnText.textContent = 'FINALIZADO';
+      btn.disabled = true;
+    } else if (data.estaEnTrabajo) {
       badge.className = 'fichar-status-badge dentro';
       statusText.textContent = 'En el trabajo';
       btn.className = 'btn-fichar salida';
       btnText.textContent = 'SALIDA';
+      btn.disabled = false;
     } else {
       badge.className = 'fichar-status-badge fuera';
       statusText.textContent = 'Fuera del trabajo';
       btn.className = 'btn-fichar entrada';
       btnText.textContent = 'ENTRADA';
+      btn.disabled = false;
     }
-    btn.disabled = false;
 
     // Mostrar fichajes de hoy
     const contenedor = document.getElementById('fichajes-hoy');
