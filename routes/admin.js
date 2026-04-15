@@ -357,7 +357,7 @@ router.get('/fichajes', async (req, res) => {
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
     const result = await pool.query(`
-      SELECT f.id, f.tipo, f.timestamp, f.fecha,
+      SELECT f.id, f.tipo, f.timestamp, f.fecha, f.minutos_extra,
              e.nombre, e.apellidos, e.dni_nie, e.puesto,
              c.nombre AS centro_nombre
       FROM fichajes f

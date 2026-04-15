@@ -1136,23 +1136,33 @@ const Admin = (() => {
 
     try {
       fichajesData = await API.getFichajesAdmin(filtros);
+
+      // Calcular total extra
+      const totalExtra = fichajesData.reduce((acc, f) => acc + (f.minutos_extra || 0), 0);
+      const extraHeader = totalExtra > 0 ? `<div style="margin-bottom:15px; padding:12px; background:var(--orange-light); border-radius:10px; border:1px solid rgba(249,115,22,0.2); display:inline-block;">
+        <span style="color:var(--orange); font-weight:700; font-size:13px;">TIEMPO EXTRA TOTAL: </span>
+        <strong style="color:var(--orange); font-size:16px;">${Math.floor(totalExtra/60)}h ${totalExtra%60}min</strong>
+      </div>` : '';
+
       if (fichajesData.length === 0) {
         contenedor.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>No hay fichajes con esos filtros</p></div>';
         return;
       }
-      contenedor.innerHTML = `<table>
+      contenedor.innerHTML = extraHeader + `<table>
         <thead><tr>
           <th>Empleado</th><th>DNI/NIE</th><th>Centro</th><th>Tipo</th>
-          <th>Fecha</th><th>Hora</th>
+          <th>Extra</th><th>Fecha</th><th>Hora</th>
         </tr></thead>
         <tbody>
           ${fichajesData.map(f => {
             const dt = new Date(f.timestamp);
+            const extraTag = f.minutos_extra > 0 ? `<span class="badge badge-extra">+${f.minutos_extra} min</span>` : '—';
             return `<tr>
               <td><strong>${f.apellidos}, ${f.nombre}</strong><br/><span class="td-muted" style="font-size:12px">${f.puesto||''}</span></td>
               <td class="td-muted">${f.dni_nie}</td>
               <td class="td-muted">${f.centro_nombre||'—'}</td>
               <td><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo.toUpperCase()}</span></td>
+              <td>${extraTag}</td>
               <td class="td-muted">${dt.toLocaleDateString('es-ES')}</td>
               <td class="td-muted">${dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</td>
             </tr>`;
@@ -1171,12 +1181,13 @@ const Admin = (() => {
     if (!fichajesData || fichajesData.length === 0) {
       App.showToast('No hay datos para exportar. Aplica los filtros primero.', 'error'); return;
     }
-    const headers = ['Empleado','DNI/NIE','Centro','Puesto','Tipo','Fecha','Hora'];
+    const headers = ['Empleado','DNI/NIE','Centro','Puesto','Tipo','Extra (min)','Fecha','Hora'];
     const rows = fichajesData.map(f => {
       const dt = new Date(f.timestamp);
       return [
         `${f.apellidos}, ${f.nombre}`,
         f.dni_nie, f.centro_nombre||'', f.puesto||'', f.tipo.toUpperCase(),
+        f.minutos_extra || 0,
         dt.toLocaleDateString('es-ES'), dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
       ];
     });
@@ -1207,15 +1218,17 @@ const Admin = (() => {
     <h1>Registros de Fichaje — Martínez Sánchez Gasóleos</h1>
     <p>Generado: ${new Date().toLocaleString('es-ES')}</p>
     <table><thead><tr>
-      <th>Empleado</th><th>DNI/NIE</th><th>Centro</th><th>Tipo</th><th>Fecha</th><th>Hora</th>
+      <th>Empleado</th><th>DNI/NIE</th><th>Centro</th><th>Tipo</th><th>Extra</th><th>Fecha</th><th>Hora</th>
     </tr></thead><tbody>`;
     const body = fichajesData.map(f => {
       const dt = new Date(f.timestamp);
       const color = f.tipo === 'entrada' ? '#10b981' : '#ef4444';
+      const extraTxt = f.minutos_extra > 0 ? `+${f.minutos_extra} min` : '—';
       return `<tr>
         <td>${f.apellidos}, ${f.nombre}</td>
         <td>${f.dni_nie}</td><td>${f.centro_nombre||'—'}</td>
         <td><strong style="color:${color}">${f.tipo.toUpperCase()}</strong></td>
+        <td>${extraTxt}</td>
         <td>${dt.toLocaleDateString('es-ES')}</td>
         <td>${dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</td>
       </tr>`;

@@ -92,11 +92,26 @@ const Empleado = (() => {
     // Mostrar fichajes de hoy
     const contenedor = document.getElementById('fichajes-hoy');
     if (data.fichajesHoy && data.fichajesHoy.length > 0) {
-      contenedor.innerHTML = '<div class="historial-day-label" style="margin-bottom:10px">Fichajes de hoy</div>' +
+      let extraHtml = '';
+      if (data.acumuladoMes > 0) {
+        const horas = Math.floor(data.acumuladoMes / 60);
+        const mins = data.acumuladoMes % 60;
+        const totalStr = horas > 0 ? `${horas}h ${mins}min` : `${mins}min`;
+        extraHtml = `<div style="text-align:center; padding:10px; background:var(--orange-light); border-radius:10px; margin-bottom:15px; border:1px solid rgba(249,115,22,0.2)">
+          <div style="font-size:11px; color:var(--orange); font-weight:700; text-transform:uppercase;">Tiempo Extra Acumulado (Mes)</div>
+          <div style="font-size:20px; font-weight:800; color:var(--orange);">${totalStr}</div>
+        </div>`;
+      }
+
+      contenedor.innerHTML = extraHtml + '<div class="historial-day-label" style="margin-bottom:10px">Fichajes de hoy</div>' +
         data.fichajesHoy.map(f => {
           const hora = new Date(f.timestamp).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+          const extraTag = (f.tipo === 'salida' && f.minutos_extra > 0) ? `<span class="fichaje-extra-tag">+${f.minutos_extra} min</span>` : '';
           return `<div class="fichaje-item-hoy">
-            <span class="fichaje-tipo-tag ${f.tipo}">${f.tipo.toUpperCase()}</span>
+            <div>
+              <span class="fichaje-tipo-tag ${f.tipo}">${f.tipo.toUpperCase()}</span>
+              ${extraTag}
+            </div>
             <span class="fichaje-hora">${hora}</span>
           </div>`;
         }).join('');
@@ -171,8 +186,12 @@ const Empleado = (() => {
         const diaLabel = `${diasSemana[d.getDay()]} ${d.getDate()} de ${MESES_ES[d.getMonth()]}`;
         const rows = fichajes.map(f => {
           const hora = new Date(f.timestamp).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+          const extraTag = (f.tipo === 'salida' && f.minutos_extra > 0) ? `<span class="fichaje-extra-tag">+${f.minutos_extra} min</span>` : '';
           return `<div class="historial-row">
-            <span class="fichaje-tipo-tag ${f.tipo}">${f.tipo.toUpperCase()}</span>
+            <div>
+              <span class="fichaje-tipo-tag ${f.tipo}">${f.tipo.toUpperCase()}</span>
+              ${extraTag}
+            </div>
             <span class="fichaje-hora td-muted">${hora}</span>
           </div>`;
         }).join('');

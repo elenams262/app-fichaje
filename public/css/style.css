@@ -528,6 +528,10 @@ select option { background: var(--bg-2); }
 .fichaje-tipo-tag.entrada { background: var(--green-light); color: var(--green); }
 .fichaje-tipo-tag.salida { background: var(--red-light); color: var(--red); }
 .fichaje-hora { font-size: 14px; color: var(--text-muted); }
+.fichaje-extra-tag { 
+  font-size: 11px; font-weight: 700; color: var(--orange); 
+  background: var(--orange-light); padding: 2px 6px; border-radius: 4px;
+}
 
 /* ============================================================
    BOTTOM NAV (Empleado)
@@ -739,6 +743,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .badge-red { background: var(--red-light); color: var(--red); }
 .badge-orange { background: var(--orange-light); color: var(--orange); }
 .badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-extra { background: var(--orange-light); color: var(--orange); border: 1px solid rgba(249,115,22,0.2); }
 
 /* Filter bar */
 .filter-bar {

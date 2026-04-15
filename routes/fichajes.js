@@ -101,17 +101,30 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
       }
     }
 
+    // Calcular minutos extra si es salida
+    let minutosExtra = 0;
+    if (tipo === 'salida' && horarioHoy.salida) {
+      const [hSalProgramada, mSalProgramada] = horarioHoy.salida.split(':').map(Number);
+      const minutosProgramados = hSalProgramada * 60 + mSalProgramada;
+      
+      // Solo si ficha DESPUÉS de su hora de salida
+      if (horaActualNum > minutosProgramados) {
+        minutosExtra = horaActualNum - minutosProgramados;
+      }
+    }
+
     // Registrar el fichaje
     const result = await pool.query(
-      `INSERT INTO fichajes (empleado_id, tipo, timestamp, fecha)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [empleadoId, tipo, ahora.toISOString(), hoy]
+      `INSERT INTO fichajes (empleado_id, tipo, timestamp, fecha, minutos_extra)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [empleadoId, tipo, ahora.toISOString(), hoy, minutosExtra]
     );
 
     res.status(201).json({
       fichaje: result.rows[0],
       tipo,
       hora: ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      minutosExtra,
       mensaje: tipo === 'entrada' ? '✅ Entrada registrada correctamente' : '✅ Salida registrada correctamente'
     });
 
@@ -156,12 +169,20 @@ router.get('/estado', soloEmpleado, async (req, res) => {
     const ultimo = result.rows[0];
     const estaEnTrabajo = ultimo && ultimo.tipo === 'entrada';
     const turnoCompletado = ultimo && ultimo.tipo === 'salida';
-    const proximoTipo = estaEnTrabajo ? 'salida' : (turnoCompletado ? null : 'entrada');
+    // Calcular total minutos extra del mes
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const extraResult = await pool.query(
+      `SELECT SUM(minutos_extra) as total FROM fichajes 
+       WHERE empleado_id = $1 AND fecha >= $2`,
+      [empleadoId, startOfMonth]
+    );
+    const acumuladoMes = parseInt(extraResult.rows[0].total || 0);
 
     res.json({
       estaEnTrabajo,
       turnoCompletado,
       proximoTipo,
+      acumuladoMes,
       ultimo: ultimo || null,
       fichajesHoy: fichajesToday.rows,
       licenciaActual // Se enviará null o el string de la causa
@@ -183,7 +204,7 @@ router.get('/historial', soloEmpleado, async (req, res) => {
 
   try {
     let query = `
-      SELECT id, tipo, timestamp, fecha
+      SELECT id, tipo, timestamp, fecha, minutos_extra
       FROM fichajes
       WHERE empleado_id = $1
     `;
