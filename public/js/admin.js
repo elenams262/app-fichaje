@@ -558,7 +558,6 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-personal">👤 Datos personales</button>
       <button class="modal-tab" data-tab-target="tab-contrato">📄 Contrato</button>
-      ${emp ? `<button class="modal-tab" data-tab-target="tab-horario-fijo">🕒 Horario Fijo</button>` : ''}
       ${emp ? `<button class="modal-tab" data-tab-target="tab-licencias-admin">⏸️ Permisos</button>` : ''}
     </div>
 
@@ -720,13 +719,6 @@ const Admin = (() => {
       </div>
     </div>
     
-    <!-- TAB 3: HORARIO FIJO -->
-    ${emp ? `
-    <div id="tab-horario-fijo" class="modal-tab-panel">
-      <div id="hf-editor-employee-container">
-        ${getHFEditorHTML(emp.horario_fijo, emp.horario_fijo_inicio)}
-      </div>
-    </div>` : ''}
     
     <!-- TAB 4: LICENCIAS Y PERMISOS -->
     ${emp ? `
@@ -787,7 +779,7 @@ const Admin = (() => {
       }
     });
 
-    const hfData = leerDatosHFEditor();
+    // const hfData = leerDatosHFEditor();
     
     return {
       nombre: document.getElementById('emp-nombre').value.trim(),
@@ -799,8 +791,6 @@ const Admin = (() => {
       centro_id: document.getElementById('emp-centro').value || null,
       puesto: document.getElementById('emp-puesto').value.trim(),
       nss: document.getElementById('emp-nss').value.trim(),
-      horario_fijo: hfData.horario_fijo,
-      horario_fijo_inicio: hfData.horario_fijo_inicio,
       ...(esEdicion ? { activo: document.getElementById('emp-activo').value === 'true' } : {})
     };
   };
@@ -872,6 +862,11 @@ const Admin = (() => {
         const payload = leerDatosEmpleado(true);
         const pwd = document.getElementById('emp-pwd').value;
         if (pwd) payload.password = pwd;
+        
+        // Mantener el horario fijo actual
+        payload.horario_fijo = emp.horario_fijo;
+        payload.horario_fijo_inicio = emp.horario_fijo_inicio;
+
         try {
           await API.editarEmpleado(id, payload);
           const ct = leerDatosContrato(id);
@@ -884,17 +879,6 @@ const Admin = (() => {
     ]);
     setTimeout(() => {
       initModalTabs();
-      if (emp) {
-        bindHFEditorEvents(emp.horario_fijo);
-        // Ajustar IDs para que leerDatosHFEditor funcione con los IDs estándar que usa el modal HF
-        // pero que en este caso están dentro del modal de empleado
-        const inicioEl = document.getElementById('hf-modal-inicio');
-        if (!inicioEl) {
-           // Si no se encuentran los IDs de hf-modal-* es que estamos usando los nombres genéricos
-           // pero leerDatosHFEditor espera hf-modal-inicio/ciclo.
-           // getHFEditorHTML ya usa hf-modal-* por defecto.
-        }
-      }
       if (tabActiva !== 'tab-personal') {
         document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
@@ -1113,20 +1097,48 @@ const Admin = (() => {
 
   const renderHorarioEditor = () => {
     const contenedor = document.getElementById('horario-editor');
+    const selectedMes = parseInt(document.getElementById('horario-mes-sel').value);
+    const selectedAnio = parseInt(document.getElementById('horario-anio-sel').value);
+    
+    // Obtener fecha de inicio de la semana seleccionada
+    const [y, m, d] = semanaSeleccionada.inicioStr.split('-').map(Number);
+    const fInicio = new Date(y, m - 1, d);
+
     contenedor.innerHTML = `<div class="horario-editor-title">Define los días del ${semanaSeleccionada.label}</div>` +
-      DIAS.map(dia => {
+      DIAS.map((dia, idx) => {
+        // Calcular fecha para este día concreto
+        const dActual = new Date(fInicio);
+        dActual.setDate(fInicio.getDate() + idx);
+        
+        // Comprobar si pertenece al mes/año seleccionado en el buscador
+        const belongsToMonth = (dActual.getMonth() + 1) === selectedMes && dActual.getFullYear() === selectedAnio;
+        const diaNum = dActual.getDate();
+        const mesNombreCur = MESES[dActual.getMonth()].substring(0,3);
+
         const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
         const info = horarioActual[diaKey] || horarioActual[dia] || null;
         const activo = !!info;
-        return `<div class="horario-dia-row" id="row-${dia}">
+        
+        // Si no pertenece al mes, deshabilitamos todo independientemente de si está activo o no
+        const disabledAttr = (!belongsToMonth || !activo) ? 'disabled' : '';
+        const opacity = belongsToMonth ? '1' : '0.4';
+
+        return `<div class="horario-dia-row" id="row-${dia}" style="opacity:${opacity}; ${!belongsToMonth ? 'background:rgba(0,0,0,0.02);' : ''}">
           <div class="horario-dia-label">
-            <div class="toggle-dia ${activo?'on':''}" data-dia="${dia}" onclick="Admin.toggleDia('${dia}')"></div>
-            <span>${diaKey}</span>
+            <div class="toggle-dia ${activo?'on':''}" data-dia="${dia}" 
+                 onclick="${belongsToMonth ? `Admin.toggleDia('${dia}')` : 'return false;'}" 
+                 style="${!belongsToMonth ? 'cursor:not-allowed; opacity:0.5;' : ''}"></div>
+            <span style="display:flex; flex-direction:column; line-height:1.1;">
+               <span style="font-weight:700; font-size:13px;">${diaKey} ${diaNum}</span>
+               <span style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">${mesNombreCur}</span>
+            </span>
           </div>
-          <input type="time" class="time-input" id="h-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
-          <input type="time" class="time-input" id="h-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />
-          <input type="text" class="obs-input" id="h-obs-${dia}" placeholder="Observaciones..." value="${info?.observaciones||''}" ${!activo?'disabled':''} />
-          <span style="font-size:12px;color:var(--text-dim)">${activo?'activo':'libre'}</span>
+          <input type="time" class="time-input" id="h-entrada-${dia}" value="${info?.entrada||'07:00'}" ${disabledAttr} />
+          <input type="time" class="time-input" id="h-salida-${dia}" value="${info?.salida||'15:00'}" ${disabledAttr} />
+          <input type="text" class="obs-input" id="h-obs-${dia}" placeholder="Observaciones..." value="${info?.observaciones||''}" ${disabledAttr} />
+          <span style="font-size:12px;color:var(--text-dim); min-width:60px; text-align:right;">
+            ${belongsToMonth ? (activo ? 'activo' : 'libre') : '<small>otro mes</small>'}
+          </span>
         </div>`;
       }).join('');
   };
