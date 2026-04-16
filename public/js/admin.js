@@ -370,10 +370,10 @@ const Admin = (() => {
             if(esFes) bg = 'background:rgba(239,68,68,0.05);';
 
             if(turAplica) {
-               const e = turAplica.entrada.split(':')[0];
-               const s = turAplica.salida.split(':')[0];
+               const entradaFull = turAplica.entrada;
+               const salidaFull = turAplica.salida;
                const obsIcon = turAplica.observaciones ? `<span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-left:2px; vertical-align:middle;" title="${turAplica.observaciones}"></span>` : '';
-               casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${turAplica.entrada} - ${turAplica.salida} ${turAplica.observaciones?('· '+turAplica.observaciones):''}">${e}-${s}</strong>${obsIcon}`;
+               casillaTxt = `<strong style="color:var(--primary-color); cursor:help; font-size:10px;" title="${entradaFull} - ${salidaFull} ${turAplica.observaciones?('· '+turAplica.observaciones):''}">${entradaFull}-${salidaFull}</strong>${obsIcon}`;
                if(!esFes) bg = 'background:rgba(16,185,129,0.08);';
             }
             const bStyle2 = d === numDias ? 'border-right:none;' : '';
