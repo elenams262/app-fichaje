@@ -140,7 +140,9 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
 // ============================================================
 router.get('/estado', soloEmpleado, async (req, res) => {
   const empleadoId = req.usuario.id;
-  const hoy = new Date().toISOString().split('T')[0];
+  const tzn = 'Europe/Madrid';
+  const ahora = new Date();
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: tzn, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ahora);
 
   try {
     // Comprobar licencia hoy
@@ -169,6 +171,7 @@ router.get('/estado', soloEmpleado, async (req, res) => {
     const ultimo = result.rows[0];
     const estaEnTrabajo = ultimo && ultimo.tipo === 'entrada';
     const turnoCompletado = ultimo && ultimo.tipo === 'salida';
+    const proximoTipo = turnoCompletado ? null : (estaEnTrabajo ? 'salida' : 'entrada');
     // Calcular total minutos extra del mes
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const extraResult = await pool.query(
