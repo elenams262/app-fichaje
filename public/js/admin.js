@@ -1434,7 +1434,11 @@ const Admin = (() => {
     
     // El formato del input date es YYYY-MM-DD
     const [y, m, d] = inicioStr.split('-').map(Number);
-    const fInicio = new Date(y, m - 1, d);
+    let fInicio = new Date(y, m - 1, d);
+    
+    // Ajustar fInicio al LUNES de esa semana para que los nombres coincidan con el día real
+    const diaSemana = fInicio.getDay() || 7; // 1=Lun, 7=Dom
+    fInicio.setDate(fInicio.getDate() - (diaSemana - 1));
     
     // Iterar por las 4 semanas posibles en el modal
     for (let sem = 1; sem <= 4; sem++) {
