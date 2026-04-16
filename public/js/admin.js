@@ -986,6 +986,13 @@ const Admin = (() => {
   let semanasActuales = [];
   let semanaSeleccionada = null;
 
+  const toLocalDateStr = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const obtenerSemanasMes = (mes, anio) => {
     const semanas = [];
     let fecha = new Date(anio, mes - 1, 1);
@@ -1004,8 +1011,8 @@ const Admin = (() => {
       }
 
       semanas.push({
-        inicioStr: inicio.toISOString().split('T')[0],
-        finStr: fin.toISOString().split('T')[0],
+        inicioStr: toLocalDateStr(inicio),
+        finStr: toLocalDateStr(fin),
         label: `Del ${inicio.getDate()} ${MESES[inicio.getMonth()].substring(0,3)} al ${fin.getDate()} ${MESES[fin.getMonth()].substring(0,3)}`
       });
       fecha.setDate(fecha.getDate() + 7);
@@ -1386,7 +1393,7 @@ const Admin = (() => {
         </p>
       </div>
       
-      <div class="modal-tabs" id="hf-semanas-tabs" style="${ciclo <= 1 ? 'display:none' : ''}">
+      <div class="modal-tabs" id="hf-semanas-tabs">
         ${[1,2,3,4].map(n => `
           <button class="modal-tab ${n===1?'active':''}" data-hf-tab="${n}" style="${n > ciclo ? 'display:none' : ''}">Semana ${n}</button>
         `).join('')}
@@ -1404,7 +1411,10 @@ const Admin = (() => {
                 <div class="horario-dia-row">
                   <div class="horario-dia-label">
                     <div class="toggle-dia ${activo ? 'on' : ''}" data-hf-dia-toggle="${dia}" data-semana="${n}"></div>
-                    <span>${diaKey}</span>
+                    <span style="display:flex; flex-direction:column; line-height:1.1;">
+                       <span style="font-weight:700">${diaKey}</span>
+                       <span class="hf-date-preview" data-semana="${n}" data-dia="${dia}" style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">--</span>
+                    </span>
                   </div>
                   <input type="time" class="time-input" data-hf-entrada="${dia}" data-semana="${n}" value="${info?.entrada || '07:00'}" ${!activo ? 'disabled' : ''} />
                   <input type="time" class="time-input" data-hf-salida="${dia}" data-semana="${n}" value="${info?.salida || '15:00'}" ${!activo ? 'disabled' : ''} />
@@ -1418,13 +1428,45 @@ const Admin = (() => {
     return html;
   };
 
+  const actualizarHFDates = () => {
+    const inicioStr = document.getElementById('hf-modal-inicio').value;
+    if (!inicioStr) return;
+    
+    // El formato del input date es YYYY-MM-DD
+    const [y, m, d] = inicioStr.split('-').map(Number);
+    const fInicio = new Date(y, m - 1, d);
+    
+    // Iterar por las 4 semanas posibles en el modal
+    for (let sem = 1; sem <= 4; sem++) {
+       const fSemana = new Date(fInicio);
+       fSemana.setDate(fInicio.getDate() + (sem - 1) * 7);
+       
+       DIAS.forEach((dia, idx) => {
+          const dActual = new Date(fSemana);
+          dActual.setDate(fSemana.getDate() + idx);
+          
+          const labelEl = document.querySelector(`.hf-date-preview[data-semana="${sem}"][data-dia="${dia}"]`);
+          if (labelEl) {
+             labelEl.textContent = `${dActual.getDate()} ${MESES[dActual.getMonth()].substring(0,3)}`;
+          }
+       });
+    }
+  };
+
   const bindHFEditorEvents = (hfOriginal) => {
     const selCiclo = document.getElementById('hf-modal-ciclo');
     const tabsContainer = document.getElementById('hf-semanas-tabs');
+    const inputInicio = document.getElementById('hf-modal-inicio');
+
+    // Inicializar fechas
+    actualizarHFDates();
+
+    inputInicio.addEventListener('change', () => actualizarHFDates());
     
     selCiclo.addEventListener('change', (e) => {
       const n = parseInt(e.target.value);
-      tabsContainer.style.display = n > 1 ? 'flex' : 'none';
+      // Mantener pestañas visibles si se desea, o al menos la 1
+      // tabsContainer.style.display = n > 1 ? 'flex' : 'none'; // Quitamos esta línea para que siempre se vea
       
       // Mostrar/ocultar botones de tab
       document.querySelectorAll('[data-hf-tab]').forEach(btn => {
