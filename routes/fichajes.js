@@ -68,8 +68,21 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
 
     // Prioridad 2: Horario fijo (si aplica la fecha de inicio)
     if (!horarioHoy && horario_fijo && horario_fijo_inicio) {
-      if (hoy >= horario_fijo_inicio.toISOString().split('T')[0]) {
-        horarioHoy = (horario_fijo[diaKey] || horario_fijo[diaSinTilde]);
+      const inicioFijoStr = horario_fijo_inicio.toISOString().split('T')[0];
+      if (hoy >= inicioFijoStr) {
+        let hFijoSemana = horario_fijo;
+        
+        // Si es el nuevo formato de ciclos
+        if (horario_fijo.ciclo && Array.isArray(horario_fijo.semanas)) {
+          const fechaInicio = new Date(inicioFijoStr);
+          const fechaHoy = new Date(hoy);
+          const diffMs = fechaHoy.getTime() - fechaInicio.getTime();
+          const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const semanaIdx = Math.floor(diffDias / 7) % horario_fijo.ciclo;
+          hFijoSemana = horario_fijo.semanas[semanaIdx] || {};
+        }
+        
+        horarioHoy = (hFijoSemana[diaKey] || hFijoSemana[diaSinTilde]);
       }
     }
 

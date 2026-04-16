@@ -281,7 +281,16 @@ const Empleado = (() => {
          if(semAplica && semAplica.dias) {
               h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
          } else if (horarioFijo && horarioFijoInicio && strDate >= horarioFijoInicio) {
-              h = horarioFijo[keyReal] || horarioFijo[keyDiaSem] || null;
+              let hFijoSemana = horarioFijo;
+              if (horarioFijo.ciclo && Array.isArray(horarioFijo.semanas)) {
+                 const dInicio = new Date(horarioFijoInicio);
+                 const dHoy = new Date(strDate);
+                 const diffMs = dHoy.getTime() - dInicio.getTime();
+                 const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                 const semIdx = Math.floor(diffDias / 7) % horarioFijo.ciclo;
+                 hFijoSemana = horarioFijo.semanas[semIdx] || {};
+              }
+              h = hFijoSemana[keyReal] || hFijoSemana[keyDiaSem] || null;
          }
 
          if(h) {

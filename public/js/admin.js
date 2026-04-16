@@ -357,9 +357,21 @@ const Admin = (() => {
                turAplica = hAplica.dias[k] || hAplica.dias[diaKey];
             } 
             // Prioridad 2: Horario fijo (si aplica)
-            else if (emp.horario_fijo && emp.horario_fijo_inicio && strDate >= emp.horario_fijo_inicio.split('T')[0]) {
-               const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
-               turAplica = emp.horario_fijo[k] || emp.horario_fijo[diaKey];
+            else if (emp.horario_fijo && emp.horario_fijo_inicio) {
+               const inicioFijoStr = emp.horario_fijo_inicio.split('T')[0];
+               if (strDate >= inicioFijoStr) {
+                  let hFijoSemana = emp.horario_fijo;
+                  if (emp.horario_fijo.ciclo && Array.isArray(emp.horario_fijo.semanas)) {
+                     const dInicio = new Date(inicioFijoStr);
+                     const dHoy = new Date(strDate);
+                     const diffMs = dHoy.getTime() - dInicio.getTime();
+                     const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                     const semIdx = Math.floor(diffDias / 7) % emp.horario_fijo.ciclo;
+                     hFijoSemana = emp.horario_fijo.semanas[semIdx] || {};
+                  }
+                  const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
+                  turAplica = hFijoSemana[k] || hFijoSemana[diaKey];
+               }
             }
 
             let casillaTxt = '<span style="color:var(--border-color); cursor:default;" title="Libre">L</span>';
@@ -711,30 +723,10 @@ const Admin = (() => {
     <!-- TAB 3: HORARIO FIJO -->
     ${emp ? `
     <div id="tab-horario-fijo" class="modal-tab-panel">
-      <div class="horario-editor-title">Configura el horario base que se aplicará automáticamente</div>
-      <div style="background:var(--bg-3); padding:12px; border-radius:8px; margin-bottom:15px;">
-        <div class="form-group">
-          <label>Fecha de activación del horario fijo</label>
-          <input type="date" id="emp-hf-inicio" value="${emp.horario_fijo_inicio ? emp.horario_fijo_inicio.split('T')[0] : ''}" />
-          <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Este horario solo se aplicará a partir de la fecha indicada si no hay un horario semanal específico.</p>
-        </div>
+      <div id="hf-editor-employee-container">
+        ${getHFEditorHTML(emp.horario_fijo, emp.horario_fijo_inicio)}
       </div>
-      <div id="hf-editor-container">
-        ${['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].map(dia => {
-          const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
-          const h = emp.horario_fijo || {};
-          const info = h[diaKey] || h[dia] || null;
-          const activo = !!info;
-          return `<div class="horario-dia-row">
-            <div class="horario-dia-label">
-              <div class="toggle-dia ${activo?'on':''}" data-hfdia="${dia}" onclick="const t=this; t.classList.toggle('on'); const act=t.classList.contains('on'); document.getElementById('hf-entrada-${dia}').disabled=!act; document.getElementById('hf-salida-${dia}').disabled=!act;"></div>
-              ${diaKey}
-            </div>
-            <input type="time" class="time-input" id="hf-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
-            <input type="time" class="time-input" id="hf-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />
-          </div>`;
-        }).join('')}
-      </div>
+    </div>` : ''}
     </div>` : ''}
     
     <!-- TAB 4: LICENCIAS Y PERMISOS -->
@@ -796,6 +788,8 @@ const Admin = (() => {
       }
     });
 
+    const hfData = leerDatosHFEditor();
+    
     return {
       nombre: document.getElementById('emp-nombre').value.trim(),
       apellidos: document.getElementById('emp-apellidos').value.trim(),
@@ -806,8 +800,8 @@ const Admin = (() => {
       centro_id: document.getElementById('emp-centro').value || null,
       puesto: document.getElementById('emp-puesto').value.trim(),
       nss: document.getElementById('emp-nss').value.trim(),
-      horario_fijo,
-      horario_fijo_inicio: document.getElementById('emp-hf-inicio')?.value || null,
+      horario_fijo: hfData.horario_fijo,
+      horario_fijo_inicio: hfData.horario_fijo_inicio,
       ...(esEdicion ? { activo: document.getElementById('emp-activo').value === 'true' } : {})
     };
   };
@@ -891,6 +885,17 @@ const Admin = (() => {
     ]);
     setTimeout(() => {
       initModalTabs();
+      if (emp) {
+        bindHFEditorEvents(emp.horario_fijo);
+        // Ajustar IDs para que leerDatosHFEditor funcione con los IDs estándar que usa el modal HF
+        // pero que en este caso están dentro del modal de empleado
+        const inicioEl = document.getElementById('hf-modal-inicio');
+        if (!inicioEl) {
+           // Si no se encuentran los IDs de hf-modal-* es que estamos usando los nombres genéricos
+           // pero leerDatosHFEditor espera hf-modal-inicio/ciclo.
+           // getHFEditorHTML ya usa hf-modal-* por defecto.
+        }
+      }
       if (tabActiva !== 'tab-personal') {
         document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
@@ -1046,6 +1051,11 @@ const Admin = (() => {
 
     document.getElementById('btn-cargar-horario').addEventListener('click', cargarHorarioEditor);
     document.getElementById('btn-guardar-horario').addEventListener('click', guardarHorario);
+    document.getElementById('btn-admin-configurer-hf')?.addEventListener('click', () => {
+      const empId = document.getElementById('horario-empleado-sel').value;
+      if (!empId) { App.showToast('Selecciona un empleado primero', 'warning'); return; }
+      abrirModalHorarioFijo(empId);
+    });
   };
 
   const cargarHorarioEditor = async () => {
@@ -1294,12 +1304,190 @@ const Admin = (() => {
     setTimeout(() => { w.print(); }, 500);
   };
 
+  // ============================================================
+  // GESTIÓN DE HORARIO FIJO (REUTILIZABLE)
+  // ============================================================
+  const abrirModalHorarioFijo = async (empleadoId) => {
+    try {
+      const emp = await API.getEmpleado(empleadoId);
+      App.openModal(`Horario Fijo: ${emp.nombre} ${emp.apellidos}`, `
+        <div id="hf-modal-container">
+           ${getHFEditorHTML(emp.horario_fijo, emp.horario_fijo_inicio)}
+        </div>
+      `, [
+        { text: 'Cancelar', cls: 'btn-outline', action: () => App.closeModal() },
+        { text: 'Guardar Horario Fijo', cls: 'btn-primary', action: async () => {
+             const payload = leerDatosHFEditor();
+             try {
+               await API.editarEmpleado(empleadoId, {
+                 nombre: emp.nombre,
+                 apellidos: emp.apellidos,
+                 horario_fijo: payload.horario_fijo,
+                 horario_fijo_inicio: payload.horario_fijo_inicio,
+                 activo: emp.activo
+               });
+               App.showToast('Horario fijo actualizado', 'success');
+               App.closeModal();
+               // Si estamos en la vista de horarios, podríamos querer refrescar algo
+               if (document.getElementById('admin-horarios').classList.contains('active')) {
+                  // Opcional: recargar algo aquí
+               }
+               // Actualizar la lista local de empleados
+               await cargarEmpleados();
+             } catch(e) { App.showToast(e.message, 'error'); }
+          }
+        }
+      ]);
+      bindHFEditorEvents(emp.horario_fijo);
+    } catch(e) { App.showToast(e.message, 'error'); }
+  };
+
+  const getHFEditorHTML = (hf, inicio) => {
+    // Normalizar hf si es antiguo o nulo
+    let ciclo = 1;
+    let semanas = [{}];
+    if (hf && hf.ciclo && Array.isArray(hf.semanas)) {
+      ciclo = hf.ciclo;
+      semanas = hf.semanas;
+    } else if (hf) {
+      semanas = [hf];
+    }
+
+    const inicioVal = inicio ? inicio.split('T')[0] : '';
+    
+    let html = `
+      <div class="horario-editor-title">Configura el horario base que se aplicará cíclicamente</div>
+      <div style="background:var(--bg-3); padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid var(--border-color);">
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Fecha de activación</label>
+            <input type="date" id="hf-modal-inicio" value="${inicioVal}" />
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Ciclo (semanas)</label>
+            <select id="hf-modal-ciclo" class="select-full">
+              ${[1,2,3,4].map(n => `<option value="${n}" ${n===ciclo?'selected':''}>${n} ${n===1?'semana':'semanas'}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <p style="font-size:11px; color:var(--text-dim); margin-top:8px;">
+          El ciclo rotará cada 7 días a partir de la fecha de activación.
+        </p>
+      </div>
+      
+      <div class="modal-tabs" id="hf-semanas-tabs" style="${ciclo <= 1 ? 'display:none' : ''}">
+        ${[1,2,3,4].map(n => `
+          <button class="modal-tab ${n===1?'active':''}" data-hf-tab="${n}" style="${n > ciclo ? 'display:none' : ''}">Semana ${n}</button>
+        `).join('')}
+      </div>
+
+      <div id="hf-semanas-containers">
+        ${[1,2,3,4].map(n => `
+          <div id="hf-semana-panel-${n}" class="modal-tab-panel hf-semana-panel ${n===1?'active':''}" style="${n > ciclo ? 'display:none' : ''}">
+            ${DIAS.map(dia => {
+              const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+              const semData = semanas[n-1] || {};
+              const info = semData[diaKey] || semData[dia] || null;
+              const activo = !!info;
+              return `
+                <div class="horario-dia-row">
+                  <div class="horario-dia-label">
+                    <div class="toggle-dia ${activo ? 'on' : ''}" data-hf-dia-toggle="${dia}" data-semana="${n}"></div>
+                    <span>${diaKey}</span>
+                  </div>
+                  <input type="time" class="time-input" data-hf-entrada="${dia}" data-semana="${n}" value="${info?.entrada || '07:00'}" ${!activo ? 'disabled' : ''} />
+                  <input type="time" class="time-input" data-hf-salida="${dia}" data-semana="${n}" value="${info?.salida || '15:00'}" ${!activo ? 'disabled' : ''} />
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+    return html;
+  };
+
+  const bindHFEditorEvents = (hfOriginal) => {
+    const selCiclo = document.getElementById('hf-modal-ciclo');
+    const tabsContainer = document.getElementById('hf-semanas-tabs');
+    
+    selCiclo.addEventListener('change', (e) => {
+      const n = parseInt(e.target.value);
+      tabsContainer.style.display = n > 1 ? 'flex' : 'none';
+      
+      // Mostrar/ocultar botones de tab
+      document.querySelectorAll('[data-hf-tab]').forEach(btn => {
+        const tNum = parseInt(btn.dataset.hfTab);
+        btn.style.display = tNum <= n ? 'block' : 'none';
+      });
+      
+      // Mostrar/ocultar paneles
+      document.querySelectorAll('.hf-semana-panel').forEach(panel => {
+        const pNum = parseInt(panel.id.split('-').pop());
+        if (pNum > n) panel.classList.remove('active');
+        // Si el panel activo desaparece, activar el 1
+        if (pNum === 1 && !document.querySelector('.hf-semana-panel.active')) {
+           panel.classList.add('active');
+           document.querySelector('[data-hf-tab="1"]').classList.add('active');
+        }
+      });
+    });
+
+    // Eventos de tabs
+    document.querySelectorAll('[data-hf-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const n = btn.dataset.hfTab;
+        document.querySelectorAll('[data-hf-tab]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.hf-semana-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`hf-semana-panel-${n}`).classList.add('active');
+      });
+    });
+
+    // Eventos de toggle
+    document.querySelectorAll('[data-hf-dia-toggle]').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        const dia = toggle.dataset.hfDiaToggle;
+        const sem = toggle.dataset.semana;
+        const isOff = toggle.classList.toggle('on');
+        document.querySelector(`[data-hf-entrada="${dia}"][data-semana="${sem}"]`).disabled = !isOff;
+        document.querySelector(`[data-hf-salida="${dia}"][data-semana="${sem}"]`).disabled = !isOff;
+      });
+    });
+  };
+
+  const leerDatosHFEditor = () => {
+    const ciclo = parseInt(document.getElementById('hf-modal-ciclo').value);
+    const semanas = [];
+    
+    for (let n = 1; n <= ciclo; n++) {
+      const diasSemana = {};
+      DIAS.forEach(dia => {
+        const toggle = document.querySelector(`[data-hf-dia-toggle="${dia}"][data-semana="${n}"]`);
+        if (toggle && toggle.classList.contains('on')) {
+          const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+          diasSemana[diaKey] = {
+            entrada: document.querySelector(`[data-hf-entrada="${dia}"][data-semana="${n}"]`).value || '07:00',
+            salida: document.querySelector(`[data-hf-salida="${dia}"][data-semana="${n}"]`).value || '15:00'
+          };
+        }
+      });
+      semanas.push(diasSemana);
+    }
+
+    return {
+      horario_fijo: { ciclo, semanas },
+      horario_fijo_inicio: document.getElementById('hf-modal-inicio').value || null
+    };
+  };
+
   return {
     init, cargarDashboard,
     editarCentroModal, eliminarCentroConfirm, cargarCuadranteCentro,
     editarEmpleadoModal, toggleDia, seleccionarSemana,
     guardarLicenciaModal, eliminarLicenciaModal,
     mostrarFormNuevoContrato, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal,
-    añadirFestivoModal, quitarFestivoModal
+    añadirFestivoModal, quitarFestivoModal,
+    abrirModalHorarioFijo
   };
 })();
