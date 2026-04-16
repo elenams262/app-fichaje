@@ -349,6 +349,19 @@ const Admin = (() => {
             const diaKey = fullDiasArray[numDS];
             
             const hAplica = fila.horarios.find(s => strDate >= s.fecha_inicio.split('T')[0] && strDate <= s.fecha_fin.split('T')[0]);
+            let turAplica = null;
+            
+            // Prioridad 1: Horario semanal específico
+            if (hAplica && hAplica.dias) {
+               const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
+               turAplica = hAplica.dias[k] || hAplica.dias[diaKey];
+            } 
+            // Prioridad 2: Horario fijo (si aplica)
+            else if (emp.horario_fijo && emp.horario_fijo_inicio && strDate >= emp.horario_fijo_inicio.split('T')[0]) {
+               const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
+               turAplica = emp.horario_fijo[k] || emp.horario_fijo[diaKey];
+            }
+
             let casillaTxt = '<span style="color:var(--border-color); cursor:default;" title="Libre">L</span>';
             let bg = numDS === 0 || numDS === 6 ? 'background: rgba(0,0,0,0.02);' : '';
             
@@ -356,16 +369,12 @@ const Admin = (() => {
             const esFes = resFestivos.find(f => f.fecha === strDate);
             if(esFes) bg = 'background:rgba(239,68,68,0.05);';
 
-            if(hAplica && hAplica.dias) {
-               const k = diaKey === 'miercoles' ? 'miércoles' : diaKey;
-               const tur = hAplica.dias[k] || hAplica.dias[diaKey];
-               if(tur) {
-                  const e = tur.entrada.split(':')[0];
-                  const s = tur.salida.split(':')[0];
-                  const obsIcon = tur.observaciones ? `<span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-left:2px; vertical-align:middle;" title="${tur.observaciones}"></span>` : '';
-                  casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${tur.entrada} - ${tur.salida} ${tur.observaciones?('· '+tur.observaciones):''}">${e}-${s}</strong>${obsIcon}`;
-                  if(!esFes) bg = 'background:rgba(16,185,129,0.08);';
-               }
+            if(turAplica) {
+               const e = turAplica.entrada.split(':')[0];
+               const s = turAplica.salida.split(':')[0];
+               const obsIcon = turAplica.observaciones ? `<span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-left:2px; vertical-align:middle;" title="${turAplica.observaciones}"></span>` : '';
+               casillaTxt = `<strong style="color:var(--primary-color); cursor:help;" title="${turAplica.entrada} - ${turAplica.salida} ${turAplica.observaciones?('· '+turAplica.observaciones):''}">${e}-${s}</strong>${obsIcon}`;
+               if(!esFes) bg = 'background:rgba(16,185,129,0.08);';
             }
             const bStyle2 = d === numDias ? 'border-right:none;' : '';
             html += `<td style="padding:4px; border:1px solid var(--border-color); ${bStyle2} ${ultimaFila} ${bg}">${casillaTxt}</td>`;
@@ -537,6 +546,7 @@ const Admin = (() => {
     <div class="modal-tabs">
       <button class="modal-tab active" data-tab-target="tab-personal">👤 Datos personales</button>
       <button class="modal-tab" data-tab-target="tab-contrato">📄 Contrato</button>
+      ${emp ? `<button class="modal-tab" data-tab-target="tab-horario-fijo">🕒 Horario Fijo</button>` : ''}
       ${emp ? `<button class="modal-tab" data-tab-target="tab-licencias-admin">⏸️ Permisos</button>` : ''}
     </div>
 
@@ -698,7 +708,36 @@ const Admin = (() => {
       </div>
     </div>
     
-    <!-- TAB 3: LICENCIAS Y PERMISOS -->
+    <!-- TAB 3: HORARIO FIJO -->
+    ${emp ? `
+    <div id="tab-horario-fijo" class="modal-tab-panel">
+      <div class="horario-editor-title">Configura el horario base que se aplicará automáticamente</div>
+      <div style="background:var(--bg-3); padding:12px; border-radius:8px; margin-bottom:15px;">
+        <div class="form-group">
+          <label>Fecha de activación del horario fijo</label>
+          <input type="date" id="emp-hf-inicio" value="${emp.horario_fijo_inicio ? emp.horario_fijo_inicio.split('T')[0] : ''}" />
+          <p style="font-size:11px; color:var(--text-dim); margin-top:4px;">Este horario solo se aplicará a partir de la fecha indicada si no hay un horario semanal específico.</p>
+        </div>
+      </div>
+      <div id="hf-editor-container">
+        ${['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].map(dia => {
+          const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+          const h = emp.horario_fijo || {};
+          const info = h[diaKey] || h[dia] || null;
+          const activo = !!info;
+          return `<div class="horario-dia-row">
+            <div class="horario-dia-label">
+              <div class="toggle-dia ${activo?'on':''}" data-hfdia="${dia}" onclick="const t=this; t.classList.toggle('on'); const act=t.classList.contains('on'); document.getElementById('hf-entrada-${dia}').disabled=!act; document.getElementById('hf-salida-${dia}').disabled=!act;"></div>
+              ${diaKey}
+            </div>
+            <input type="time" class="time-input" id="hf-entrada-${dia}" value="${info?.entrada||'07:00'}" ${!activo?'disabled':''} />
+            <input type="time" class="time-input" id="hf-salida-${dia}" value="${info?.salida||'15:00'}" ${!activo?'disabled':''} />
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+    
+    <!-- TAB 4: LICENCIAS Y PERMISOS -->
     ${emp ? `
     <div id="tab-licencias-admin" class="modal-tab-panel">
       <div style="margin-bottom:15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
@@ -744,18 +783,34 @@ const Admin = (() => {
   };
 
   // Leer los datos del formulario de empleado
-  const leerDatosEmpleado = (esEdicion) => ({
-    nombre: document.getElementById('emp-nombre').value.trim(),
-    apellidos: document.getElementById('emp-apellidos').value.trim(),
-    dni_nie: document.getElementById('emp-dni-nie').value.trim(),
-    password: document.getElementById('emp-pwd').value,
-    movil: document.getElementById('emp-movil').value.trim(),
-    email: document.getElementById('emp-email').value.trim(),
-    centro_id: document.getElementById('emp-centro').value || null,
-    puesto: document.getElementById('emp-puesto').value.trim(),
-    nss: document.getElementById('emp-nss').value.trim(),
-    ...(esEdicion ? { activo: document.getElementById('emp-activo').value === 'true' } : {})
-  });
+  const leerDatosEmpleado = (esEdicion) => {
+    const horario_fijo = {};
+    ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
+      const toggle = document.querySelector(`[data-hfdia="${dia}"]`);
+      if (toggle && toggle.classList.contains('on')) {
+        const diaKey = dia === 'miercoles' ? 'miércoles' : dia;
+        horario_fijo[diaKey] = {
+          entrada: document.getElementById(`hf-entrada-${dia}`).value || '07:00',
+          salida: document.getElementById(`hf-salida-${dia}`).value || '15:00'
+        };
+      }
+    });
+
+    return {
+      nombre: document.getElementById('emp-nombre').value.trim(),
+      apellidos: document.getElementById('emp-apellidos').value.trim(),
+      dni_nie: document.getElementById('emp-dni-nie').value.trim(),
+      password: document.getElementById('emp-pwd').value,
+      movil: document.getElementById('emp-movil').value.trim(),
+      email: document.getElementById('emp-email').value.trim(),
+      centro_id: document.getElementById('emp-centro').value || null,
+      puesto: document.getElementById('emp-puesto').value.trim(),
+      nss: document.getElementById('emp-nss').value.trim(),
+      horario_fijo,
+      horario_fijo_inicio: document.getElementById('emp-hf-inicio')?.value || null,
+      ...(esEdicion ? { activo: document.getElementById('emp-activo').value === 'true' } : {})
+    };
+  };
 
   const leerDatosContrato = (empleadoId) => ({
     empleado_id: empleadoId,

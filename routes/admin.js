@@ -66,7 +66,7 @@ router.get('/centros/:id/cuadrante/:mes/:anio', async (req, res) => {
     if (centroResult.rows.length === 0) return res.status(404).json({ error: 'Centro no encontrado.' });
 
     const empResult = await pool.query(
-      'SELECT id, nombre, apellidos, puesto FROM empleados WHERE centro_id = $1 AND activo = true ORDER BY apellidos, nombre',
+      'SELECT id, nombre, apellidos, puesto, horario_fijo, horario_fijo_inicio FROM empleados WHERE centro_id = $1 AND activo = true ORDER BY apellidos, nombre',
       [id]
     );
     const empleadosCentro = empResult.rows;
@@ -156,7 +156,7 @@ router.get('/empleados/:id', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT e.id, e.dni_nie, e.nss, e.nombre, e.apellidos, e.movil, e.email,
-             e.puesto, e.activo, e.created_at,
+             e.puesto, e.activo, e.created_at, e.horario_fijo, e.horario_fijo_inicio,
              c.id AS centro_id, c.nombre AS centro_nombre
       FROM empleados e
       LEFT JOIN centros c ON e.centro_id = c.id
@@ -171,18 +171,19 @@ router.get('/empleados/:id', async (req, res) => {
 });
 
 router.post('/empleados', async (req, res) => {
-  const { dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss } = req.body;
+  const { dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss, horario_fijo, horario_fijo_inicio } = req.body;
   if (!dni_nie || !nombre || !apellidos || !password) {
     return res.status(400).json({ error: 'DNI/NIE, nombre, apellidos y contraseña son obligatorios.' });
   }
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      `INSERT INTO empleados (dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo, created_at`,
+      `INSERT INTO empleados (dni_nie, nombre, apellidos, password, movil, email, centro_id, puesto, nss, horario_fijo, horario_fijo_inicio)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo, created_at, horario_fijo, horario_fijo_inicio`,
       [dni_nie.toUpperCase(), nombre, apellidos, passwordHash,
-       movil || null, email || null, centro_id || null, puesto || null, nss || null]
+       movil || null, email || null, centro_id || null, puesto || null, nss || null, 
+       JSON.stringify(horario_fijo || null), horario_fijo_inicio || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -195,20 +196,24 @@ router.post('/empleados', async (req, res) => {
 });
 
 router.put('/empleados/:id', async (req, res) => {
-  const { nombre, apellidos, movil, email, centro_id, puesto, activo, password, nss } = req.body;
+  const { nombre, apellidos, movil, email, centro_id, puesto, activo, password, nss, horario_fijo, horario_fijo_inicio } = req.body;
   try {
     let query, params;
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);
       query = `UPDATE empleados SET nombre=$1, apellidos=$2, movil=$3, email=$4,
-               centro_id=$5, puesto=$6, activo=$7, password=$8, nss=$9 WHERE id=$10
-               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo`;
-      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, passwordHash, nss || null, req.params.id];
+               centro_id=$5, puesto=$6, activo=$7, password=$8, nss=$9, 
+               horario_fijo=$10, horario_fijo_inicio=$11 WHERE id=$12
+               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo, horario_fijo, horario_fijo_inicio`;
+      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, passwordHash, nss || null, 
+                JSON.stringify(horario_fijo || null), horario_fijo_inicio || null, req.params.id];
     } else {
       query = `UPDATE empleados SET nombre=$1, apellidos=$2, movil=$3, email=$4,
-               centro_id=$5, puesto=$6, activo=$7, nss=$8 WHERE id=$9
-               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo`;
-      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, nss || null, req.params.id];
+               centro_id=$5, puesto=$6, activo=$7, nss=$8, 
+               horario_fijo=$9, horario_fijo_inicio=$10 WHERE id=$11
+               RETURNING id, dni_nie, nss, nombre, apellidos, movil, email, puesto, activo, horario_fijo, horario_fijo_inicio`;
+      params = [nombre, apellidos, movil, email, centro_id, puesto, activo, nss || null, 
+                JSON.stringify(horario_fijo || null), horario_fijo_inicio || null, req.params.id];
     }
     const result = await pool.query(query, params);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Empleado no encontrado.' });

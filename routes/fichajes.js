@@ -43,19 +43,35 @@ router.post('/fichar', soloEmpleado, async (req, res) => {
       return res.status(400).json({ error: `No puedes fichar: Estás en periodo de ${licenciaResult.rows[0].causa}.` });
     }
 
-    // 2. Obtener el horario del empleado para hoy
-    const horarioResult = await pool.query(
-      `SELECT dias FROM horarios 
-       WHERE empleado_id = $1 AND fecha_inicio <= $2 AND fecha_fin >= $2`,
+    // 2. Obtener el horario y el horario fijo del empleado
+    const empData = await pool.query(
+      `SELECT e.horario_fijo, e.horario_fijo_inicio, h.dias 
+       FROM empleados e
+       LEFT JOIN horarios h ON e.id = h.empleado_id AND h.fecha_inicio <= $2 AND h.fecha_fin >= $2
+       WHERE e.id = $1`,
       [empleadoId, hoy]
     );
 
-    // Compatibilidad con claves sin tilde (por si acaso)
+    if (empData.rows.length === 0) {
+      return res.status(404).json({ error: 'Empleado no encontrado.' });
+    }
+
+    const { dias, horario_fijo, horario_fijo_inicio } = empData.rows[0];
     const diaSinTilde = diaKey.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    let horarioHoy = null;
     
-    const horarioHoy = horarioResult.rows.length > 0 
-      ? (horarioResult.rows[0].dias[diaKey] || horarioResult.rows[0].dias[diaSinTilde]) 
-      : null;
+    // Prioridad 1: Horario semanal específico
+    if (dias) {
+      horarioHoy = (dias[diaKey] || dias[diaSinTilde]);
+    }
+
+    // Prioridad 2: Horario fijo (si aplica la fecha de inicio)
+    if (!horarioHoy && horario_fijo && horario_fijo_inicio) {
+      if (hoy >= horario_fijo_inicio.toISOString().split('T')[0]) {
+        horarioHoy = (horario_fijo[diaKey] || horario_fijo[diaSinTilde]);
+      }
+    }
 
     if (!horarioHoy) {
       return res.status(400).json({ error: 'No puedes fichar: No tienes un turno programado para hoy.' });
@@ -238,9 +254,13 @@ router.get('/horario', soloEmpleado, async (req, res) => {
   const anio = req.query.anio || ahora.getFullYear();
 
   try {
-    // Obtener el centro del empleado para sus festivos
-    const empResult = await pool.query('SELECT centro_id FROM empleados WHERE id = $1', [empleadoId]);
-    const centroId = empResult.rows[0]?.centro_id;
+    // Obtener centro, festivos y horario fijo del empleado
+    const empResult = await pool.query(
+      'SELECT centro_id, horario_fijo, horario_fijo_inicio FROM empleados WHERE id = $1', 
+      [empleadoId]
+    );
+    const { centro_id: centroId, horario_fijo, horario_fijo_inicio } = empResult.rows[0];
+
     let festivos = [];
     if (centroId) {
       const centroResult = await pool.query('SELECT festivos FROM centros WHERE id = $1', [centroId]);
@@ -257,7 +277,9 @@ router.get('/horario', soloEmpleado, async (req, res) => {
 
     res.json({
       festivos,
-      horarios: result.rows
+      horarios: result.rows,
+      horario_fijo,
+      horario_fijo_inicio
     });
   } catch (err) {
     console.error(err);

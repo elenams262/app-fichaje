@@ -219,6 +219,8 @@ const Empleado = (() => {
       ]);
       const dataSemanas = resHorario.horarios || [];
       const resFestivos = resHorario.festivos || [];
+      const horarioFijo = resHorario.horario_fijo;
+      const horarioFijoInicio = resHorario.horario_fijo_inicio ? resHorario.horario_fijo_inicio.split('T')[0] : null;
       
       const primerDia = new Date(anio, mes - 1, 1);
       const ultimoDia = new Date(anio, mes, 0); 
@@ -254,6 +256,7 @@ const Empleado = (() => {
          const dActual = new Date(Date.UTC(anio, mes - 1, d)); // Usar UTC para evitar baile por daylight savings
          const numDiaSem = dActual.getUTCDay();
          const keyDiaSem = nomDias[numDiaSem];
+         const keyReal = keyDiaSem === 'miercoles' ? 'miércoles' : keyDiaSem;
          
          const strDate = dActual.toISOString().split('T')[0]; 
          
@@ -273,15 +276,18 @@ const Empleado = (() => {
          
          let contenidoHoras = `<span style="color:var(--text-dim)">Libre</span>`;
          let bgColor = 'var(--bg-card)';
+         let h = null;
          
          if(semAplica && semAplica.dias) {
-              const keyReal = keyDiaSem === 'miercoles' ? 'miércoles' : keyDiaSem;
-              const h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
-              if(h) {
-                  const obsHtml = h.observaciones ? `<div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent); cursor:help;" title="${h.observaciones}">📝</div>` : '';
-                  contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>${obsHtml}`;
-                  bgColor = 'var(--bg-body)';
-              }
+              h = semAplica.dias[keyReal] || semAplica.dias[keyDiaSem] || null;
+         } else if (horarioFijo && horarioFijoInicio && strDate >= horarioFijoInicio) {
+              h = horarioFijo[keyReal] || horarioFijo[keyDiaSem] || null;
+         }
+
+         if(h) {
+              const obsHtml = h.observaciones ? `<div style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent); cursor:help;" title="${h.observaciones}">📝</div>` : '';
+              contenidoHoras = `<b style="color:var(--primary-color); font-size:11px">${h.entrada}</b><br><b style="color:var(--text-color); font-size:11px">${h.salida}</b>${obsHtml}`;
+              bgColor = 'var(--bg-body)';
          }
 
          // Priorizar visualización de licencias
