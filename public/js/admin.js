@@ -727,7 +727,6 @@ const Admin = (() => {
         ${getHFEditorHTML(emp.horario_fijo, emp.horario_fijo_inicio)}
       </div>
     </div>` : ''}
-    </div>` : ''}
     
     <!-- TAB 4: LICENCIAS Y PERMISOS -->
     ${emp ? `
