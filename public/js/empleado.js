@@ -98,7 +98,7 @@ const Empleado = (() => {
         const mins = data.acumuladoMes % 60;
         const totalStr = horas > 0 ? `${horas}h ${mins}min` : `${mins}min`;
         extraHtml = `<div style="text-align:center; padding:10px; background:var(--orange-light); border-radius:10px; margin-bottom:15px; border:1px solid rgba(249,115,22,0.2)">
-          <div style="font-size:11px; color:var(--orange); font-weight:700; text-transform:uppercase;">Tiempo Extra Acumulado (Mes)</div>
+          <div style="font-size:11px; color:var(--orange); font-weight:700; text-transform:uppercase;">Tiempo Extra Acumulado</div>
           <div style="font-size:20px; font-weight:800; color:var(--orange);">${totalStr}</div>
         </div>`;
       }

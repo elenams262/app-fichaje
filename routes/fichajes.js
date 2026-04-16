@@ -172,20 +172,19 @@ router.get('/estado', soloEmpleado, async (req, res) => {
     const estaEnTrabajo = ultimo && ultimo.tipo === 'entrada';
     const turnoCompletado = ultimo && ultimo.tipo === 'salida';
     const proximoTipo = turnoCompletado ? null : (estaEnTrabajo ? 'salida' : 'entrada');
-    // Calcular total minutos extra del mes
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    // Calcular total minutos extra acumulados
     const extraResult = await pool.query(
       `SELECT SUM(minutos_extra) as total FROM fichajes 
-       WHERE empleado_id = $1 AND fecha >= $2`,
-      [empleadoId, startOfMonth]
+       WHERE empleado_id = $1`,
+      [empleadoId]
     );
-    const acumuladoMes = parseInt(extraResult.rows[0].total || 0);
+    const acumuladoTotal = parseInt(extraResult.rows[0].total || 0);
 
     res.json({
       estaEnTrabajo,
       turnoCompletado,
       proximoTipo,
-      acumuladoMes,
+      acumuladoMes: acumuladoTotal, // Mantenemos el nombre de la propiedad para no romper el frontend
       ultimo: ultimo || null,
       fichajesHoy: fichajesToday.rows,
       licenciaActual // Se enviará null o el string de la causa
