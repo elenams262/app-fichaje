@@ -410,7 +410,7 @@ const Empleado = (() => {
         const fin = ct.fecha_fin ? new Date(ct.fecha_fin).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Indefinido';
         
         return `
-          <div class="licencia-card-emp ${ct.activo ? 'active' : 'past'}">
+          <div class="licencia-card-emp ${(ct.activo || !ct.fecha_fin) ? 'active' : 'past'}">
             <div class="lic-info">
               <span class="lic-causa">${ct.tipo_contrato || 'Contrato'} - ${ct.categoria_profesional || 'Sin categoría'}</span>
               <span class="lic-fechas">${inicio} — ${fin}</span>
@@ -418,7 +418,7 @@ const Empleado = (() => {
                 <b>Centro:</b> ${ct.centro_nombre || '—'} | <b>Jornada:</b> ${ct.tipo_jornada || '—'} (${ct.horas_semanales || 0}h)
               </div>
             </div>
-            <div class="lic-status-badge">${ct.activo ? 'Actual' : 'Finalizado'}</div>
+            <div class="lic-status-badge">${(ct.activo || !ct.fecha_fin) ? 'Actual' : 'Finalizado'}</div>
           </div>
         `;
       }).join('');

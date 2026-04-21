@@ -326,7 +326,11 @@ router.get('/contratos', soloEmpleado, async (req, res) => {
   const empleadoId = req.usuario.id;
   try {
     const result = await pool.query(
-      `SELECT ct.*, c.nombre AS centro_nombre
+      `SELECT 
+        ct.id, ct.empleado_id, ct.centro_id, ct.categoria_profesional, 
+        ct.convenio, ct.tipo_contrato, ct.tipo_jornada, ct.horas_semanales, 
+        ct.fecha_inicio, ct.fecha_fin, ct.activo, ct.created_at,
+        c.nombre AS centro_nombre
        FROM contratos ct
        LEFT JOIN centros c ON ct.centro_id = c.id
        WHERE ct.empleado_id = $1

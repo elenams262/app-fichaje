@@ -7,6 +7,8 @@ const Admin = (() => {
                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   let centros = [];
   let empleados = [];
+  let editingContratoId = null;
+  let editingLicenciaId = null;
 
   // Inicializar el panel de administrador
   const init = async () => {
@@ -633,17 +635,43 @@ const Admin = (() => {
         <div class="custom-scrollbar" style="max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
           ${contratos.length === 0 ? '<p style="padding:15px; color:var(--text-dim); font-size:13px; text-align:center;">No hay contratos registrados.</p>' : `
           <table style="width:100%; border-collapse:collapse; font-size:12px;">
-            <thead><tr style="background:var(--bg-3); text-align:left;"><th style="padding:8px">Inicio</th><th style="padding:8px">Tipo</th><th style="padding:8px">Estado</th><th style="padding:8px"></th></tr></thead>
+            <thead>
+              <tr style="background:var(--bg-3); text-align:left;">
+                <th style="padding:8px">Inicio</th>
+                <th style="padding:8px">Tipo</th>
+                <th style="padding:8px">Anuales</th>
+                <th style="padding:8px">Realizadas</th>
+                <th style="padding:8px">Extra</th>
+                <th style="padding:8px">Restantes</th>
+                <th style="padding:8px">Estado</th>
+                <th style="padding:8px"></th>
+              </tr></thead>
             <tbody>
-              ${contratos.map(c => `
+              ${contratos.map(c => {
+                const anuales = parseFloat(c.horas_anuales || 0);
+                const realizadas = parseFloat(c.horas_realizadas || 0);
+                const extra = parseFloat(c.horas_extra || 0);
+                const restantes = anuales - realizadas;
+                const statusActivo = (c.activo || !c.fecha_fin);
+                
+                return `
               <tr style="border-bottom:1px solid var(--border);">
                 <td style="padding:8px">${c.fecha_inicio ? c.fecha_inicio.split('T')[0] : '—'}</td>
                 <td style="padding:8px">${c.tipo_contrato || '—'}</td>
-                <td style="padding:8px"><span class="badge ${c.activo ? 'badge-green' : 'badge-red'}" style="font-size:10px">${c.activo ? 'ACTIVO' : 'HISTÓRICO'}</span></td>
-                <td style="padding:8px; text-align:right;">
-                  <button type="button" class="btn-icon" onclick="Admin.eliminarContratoModal('${c.id}', '${emp.id}')" title="Eliminar registro"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg></button>
+                <td style="padding:8px; font-weight:700;">${anuales > 0 ? anuales.toFixed(1) : '—'}</td>
+                <td style="padding:8px; color:var(--primary-color); font-weight:700;">${realizadas.toFixed(1)}h</td>
+                <td style="padding:8px; color:var(--orange); font-weight:700;">${extra > 0 ? extra.toFixed(1) + 'h' : '—'}</td>
+                <td style="padding:8px; font-weight:700; color:${restantes < 50 ? 'var(--red)' : 'inherit'}">${anuales > 0 ? restantes.toFixed(1) + 'h' : '—'}</td>
+                <td style="padding:8px"><span class="badge ${statusActivo ? 'badge-green' : 'badge-red'}" style="font-size:10px">${statusActivo ? 'ACTIVO' : 'HISTÓRICO'}</span></td>
+                <td style="padding:8px; text-align:right; white-space:nowrap;">
+                  <button type="button" class="btn-icon" onclick="Admin.editarContratoModal('${c.id}', '${emp.id}')" title="Editar registro" style="margin-right:5px;">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button type="button" class="btn-icon" onclick="Admin.eliminarContratoModal('${c.id}', '${emp.id}')" title="Eliminar registro">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+                  </button>
                 </td>
-              </tr>`).join('')}
+              </tr>`}).join('')}
             </tbody>
           </table>`}
         </div>
@@ -696,8 +724,16 @@ const Admin = (() => {
               </select>
             </div>
             <div class="form-group">
-              <label>Horas semanales</label>
-              <input type="number" id="ct-horas" placeholder="Ej: 40" min="1" max="60" step="0.5" />
+              <div style="display:flex; gap:10px;">
+                <div style="flex:1">
+                  <label>Horas semanales</label>
+                  <input type="number" id="ct-horas" placeholder="Ej: 40" min="1" max="60" step="0.5" />
+                </div>
+                <div style="flex:1">
+                  <label>Horas anuales</label>
+                  <input type="number" id="ct-horas-anuales" placeholder="Ej: 1760" min="1" step="0.5" />
+                </div>
+              </div>
             </div>
           </div>
           <div class="form-row">
@@ -755,7 +791,14 @@ const Admin = (() => {
             ${licencias.map(l => `<tr>
               <td>${l.anio}</td><td>${l.causa}</td>
               <td class="td-muted">${l.fecha_inicio.split('T')[0]} a ${l.fecha_fin.split('T')[0]}</td>
-              <td style="text-align: right;"><button type="button" class="btn-icon" onclick="Admin.eliminarLicenciaModal('${l.id}', '${emp.id}')" title="Eliminar licencia"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg></button></td>
+              <td style="text-align: right; white-space:nowrap;">
+                <button type="button" class="btn-icon" onclick="Admin.editarLicenciaModal('${l.id}', '${emp.id}')" title="Editar licencia" style="margin-right:5px;">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button type="button" class="btn-icon" onclick="Admin.eliminarLicenciaModal('${l.id}', '${emp.id}')" title="Eliminar licencia">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+                </button>
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>`
@@ -795,17 +838,6 @@ const Admin = (() => {
     };
   };
 
-  const leerDatosContrato = (empleadoId) => ({
-    empleado_id: empleadoId,
-    centro_id: document.getElementById('ct-centro').value || null,
-    categoria_profesional: document.getElementById('ct-categoria').value.trim(),
-    convenio: document.getElementById('ct-convenio').value.trim(),
-    tipo_contrato: document.getElementById('ct-tipo').value,
-    tipo_jornada: document.getElementById('ct-jornada').value,
-    horas_semanales: document.getElementById('ct-horas').value || null,
-    fecha_inicio: document.getElementById('ct-inicio').value || null,
-    fecha_fin: document.getElementById('ct-fin').value || null
-  });
 
   const initModalTabs = () => {
     document.querySelectorAll('.modal-tab').forEach(tab => {
@@ -845,6 +877,11 @@ const Admin = (() => {
   const editarEmpleadoModal = async (id, tabActiva = 'tab-personal') => {
     const emp = empleados.find(e => e.id === id);
     if (!emp) return;
+
+    // Resetear estados de edición al abrir el modal
+    editingContratoId = null;
+    editingLicenciaId = null;
+
     // Cargar contrato y licencias existente en paralelo
     let contratos = [];
     let licencias = [];
@@ -903,18 +940,63 @@ const Admin = (() => {
       return;
     }
     try {
-      await API.crearLicencia({
-        empleado_id: empleadoId,
-        anio: parseInt(anio),
-        causa,
-        fecha_inicio: inicio,
-        fecha_fin: fin
-      });
-      App.showToast('Licencia añadida', 'success');
+      if (editingLicenciaId) {
+        await API.editarLicencia(editingLicenciaId, {
+          anio: parseInt(anio),
+          causa,
+          fecha_inicio: inicio,
+          fecha_fin: fin
+        });
+        App.showToast('Licencia actualizada correctamente', 'success');
+      } else {
+        await API.crearLicencia({
+          empleado_id: empleadoId,
+          anio: parseInt(anio),
+          causa,
+          fecha_inicio: inicio,
+          fecha_fin: fin
+        });
+        App.showToast('Licencia añadida', 'success');
+      }
+      editingLicenciaId = null;
       editarEmpleadoModal(empleadoId, 'tab-licencias-admin');
     } catch (e) {
       App.showToast(e.message, 'error');
     }
+  };
+
+  const editarLicenciaModal = (id, empleadoId) => {
+    const panel = document.getElementById('tab-licencias-admin');
+    if (!panel) return;
+    
+    // Encontrar la licencia (la pasamos como prop o la buscamos en el DOM o re-cargamos?)
+    // Lo más seguro es buscarla en la lista de licencias que ya cargamos en editarEmpleadoModal
+    // Pero esa lista es local a editarEmpleadoModal. 
+    // Vamos a buscar la fila en el DOM para extraer los datos básicos o recargar.
+    // Para simplificar, vamos a buscarla en el historial que ya tenemos.
+    // Sin embargo, para no complicar, vamos a pedirle al Admin que guarde las licencias actuales.
+    // O mejor, buscamos en el DOM los valores que ya están escritos.
+    
+    const fila = event.target.closest('tr');
+    if (!fila) return;
+    
+    const celdas = fila.querySelectorAll('td');
+    const anio = celdas[0].textContent;
+    const causa = celdas[1].textContent;
+    const fechas = celdas[2].textContent.split(' a ');
+    
+    document.getElementById('lic-causa').value = causa;
+    document.getElementById('lic-anio').value = anio;
+    document.getElementById('lic-inicio').value = fechas[0];
+    document.getElementById('lic-fin').value = fechas[1];
+    
+    editingLicenciaId = id;
+    
+    const btn = panel.querySelector('button[onclick^="Admin.guardarLicenciaModal"]');
+    if (btn) btn.textContent = 'Actualizar Licencia';
+    
+    panel.querySelector('h4').textContent = 'Editar licencia o permiso';
+    panel.scrollIntoView({ behavior: 'smooth' });
   };
 
   const eliminarLicenciaModal = async (id, empleadoId) => {
@@ -930,12 +1012,71 @@ const Admin = (() => {
 
   // FUNCIONES DE GESTIÓN DE CONTRATOS
   const mostrarFormNuevoContrato = () => {
-    document.getElementById('form-nuevo-contrato-container').style.display = 'block';
+    editingContratoId = null;
+    const container = document.getElementById('form-nuevo-contrato-container');
+    container.style.display = 'block';
     document.getElementById('form-contrato').reset();
+    container.querySelector('h4').textContent = 'Detalles del nuevo contrato';
+    const btnSave = container.querySelector('button[onclick^="Admin.guardarNuevoContrato"]');
+    if (btnSave) btnSave.textContent = 'Guardar Contrato';
+  };
+
+  const editarContratoModal = async (id, empleadoId) => {
+    // Necesitamos los datos del contrato. Como ya están en el historial del modal, los buscamos allí.
+    // O mejor, dado que los contratos tienen muchos campos, vamos a buscarlos en una lista temporal.
+    // Para no cambiar demasiada estructura, vamos a usar el DOM para extraer lo que podamos
+    // o recargar el historial. 
+    // Lo más limpio es tener la lista de contratos accesible. 
+    // Vamos a modificar editarEmpleadoModal para que guarde contratosActuales.
+    
+    // Por ahora, para no romper nada, vamos a hacer un GET individual si existiera, 
+    // pero como no hay GET /contrato/:id, usaremos el historial.
+    try {
+      const contratos = await API.getContrato(empleadoId);
+      const c = contratos.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('form-nuevo-contrato-container').style.display = 'block';
+      document.getElementById('ct-tipo').value = c.tipo_contrato || '';
+      document.getElementById('ct-centro').value = c.centro_id || '';
+      document.getElementById('ct-categoria').value = c.categoria_profesional || '';
+      document.getElementById('ct-convenio').value = c.convenio || '';
+      document.getElementById('ct-jornada').value = c.tipo_jornada || '';
+      document.getElementById('ct-horas').value = c.horas_semanales || '';
+      document.getElementById('ct-horas-anuales').value = c.horas_anuales || '';
+      document.getElementById('ct-inicio').value = c.fecha_inicio ? c.fecha_inicio.split('T')[0] : '';
+      document.getElementById('ct-fin').value = c.fecha_fin ? c.fecha_fin.split('T')[0] : '';
+
+      editingContratoId = id;
+      
+      const container = document.getElementById('form-nuevo-contrato-container');
+      container.querySelector('h4').textContent = 'Editar contrato';
+      const btnSave = container.querySelector('button[onclick^="Admin.guardarNuevoContrato"]');
+      if (btnSave) btnSave.textContent = 'Actualizar Contrato';
+      
+      container.scrollIntoView({ behavior: 'smooth' });
+    } catch (e) { App.showToast('Error al cargar contrato', 'error'); }
   };
 
   const ocultarFormNuevoContrato = () => {
     document.getElementById('form-nuevo-contrato-container').style.display = 'none';
+  };
+
+  const leerDatosContrato = (empleadoId) => {
+    const horasSem = document.getElementById('ct-horas').value;
+    const horasAnu = document.getElementById('ct-horas-anuales').value;
+    return {
+      empleado_id: empleadoId,
+      centro_id: document.getElementById('ct-centro').value || null,
+      categoria_profesional: document.getElementById('ct-categoria').value,
+      convenio: document.getElementById('ct-convenio').value,
+      tipo_contrato: document.getElementById('ct-tipo').value,
+      tipo_jornada: document.getElementById('ct-jornada').value,
+      horas_semanales: horasSem ? parseFloat(horasSem) : null,
+      horas_anuales: horasAnu ? parseFloat(horasAnu) : null,
+      fecha_inicio: document.getElementById('ct-inicio').value || null,
+      fecha_fin: document.getElementById('ct-fin').value || null
+    };
   };
 
   const guardarNuevoContrato = async (empleadoId) => {
@@ -945,8 +1086,14 @@ const Admin = (() => {
       return;
     }
     try {
-      await API.guardarContrato(ct);
-      App.showToast('Contrato guardado correctamente', 'success');
+      if (editingContratoId) {
+        await API.editarContrato(editingContratoId, ct);
+        App.showToast('Contrato actualizado correctamente', 'success');
+      } else {
+        await API.guardarContrato(ct);
+        App.showToast('Contrato guardado correctamente', 'success');
+      }
+      editingContratoId = null;
       editarEmpleadoModal(empleadoId, 'tab-contrato');
     } catch (e) {
       App.showToast(e.message, 'error');
@@ -1542,8 +1689,8 @@ const Admin = (() => {
     init, cargarDashboard,
     editarCentroModal, eliminarCentroConfirm, cargarCuadranteCentro,
     editarEmpleadoModal, toggleDia, seleccionarSemana,
-    guardarLicenciaModal, eliminarLicenciaModal,
-    mostrarFormNuevoContrato, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal,
+    guardarLicenciaModal, editarLicenciaModal, eliminarLicenciaModal,
+    mostrarFormNuevoContrato, editarContratoModal, ocultarFormNuevoContrato, guardarNuevoContrato, eliminarContratoModal,
     añadirFestivoModal, quitarFestivoModal,
     abrirModalHorarioFijo
   };

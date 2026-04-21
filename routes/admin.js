@@ -228,11 +228,28 @@ router.put('/empleados/:id', async (req, res) => {
 // CONTRATOS
 // ============================================================
 
-// GET /api/admin/contratos/:empleadoId — Historial de contratos
+// GET /api/admin/contratos — Historial de contratos
 router.get('/contratos/:empleadoId', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT ct.*, c.nombre AS centro_nombre
+      `SELECT ct.*, c.nombre AS centro_nombre,
+        (
+          SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (s.timestamp - e.timestamp)) / 3600), 0) - COALESCE(SUM(s.minutos_extra) / 60.0, 0)
+          FROM fichajes e
+          JOIN fichajes s ON e.empleado_id = s.empleado_id AND e.fecha = s.fecha
+          WHERE e.empleado_id = ct.empleado_id 
+            AND e.tipo = 'entrada' AND s.tipo = 'salida'
+            AND e.fecha >= ct.fecha_inicio
+            AND (ct.fecha_fin IS NULL OR e.fecha <= ct.fecha_fin)
+        ) as horas_realizadas,
+        (
+          SELECT COALESCE(SUM(minutos_extra) / 60.0, 0)
+          FROM fichajes
+          WHERE empleado_id = ct.empleado_id
+            AND tipo = 'salida'
+            AND fecha >= ct.fecha_inicio
+            AND (ct.fecha_fin IS NULL OR fecha <= ct.fecha_fin)
+        ) as horas_extra
        FROM contratos ct
        LEFT JOIN centros c ON ct.centro_id = c.id
        WHERE ct.empleado_id = $1
@@ -260,7 +277,7 @@ router.delete('/contratos/:id', async (req, res) => {
 router.post('/contratos', async (req, res) => {
   const {
     empleado_id, centro_id, categoria_profesional, convenio,
-    tipo_contrato, tipo_jornada, horas_semanales, fecha_inicio, fecha_fin
+    tipo_contrato, tipo_jornada, horas_semanales, horas_anuales, fecha_inicio, fecha_fin
   } = req.body;
 
   if (!empleado_id) {
@@ -277,8 +294,8 @@ router.post('/contratos', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO contratos
          (empleado_id, centro_id, categoria_profesional, convenio,
-          tipo_contrato, tipo_jornada, horas_semanales, fecha_inicio, fecha_fin, activo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+          tipo_contrato, tipo_jornada, horas_semanales, horas_anuales, fecha_inicio, fecha_fin, activo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
        RETURNING *`,
       [
         empleado_id,
@@ -288,6 +305,7 @@ router.post('/contratos', async (req, res) => {
         tipo_contrato || null,
         tipo_jornada || null,
         horas_semanales || null,
+        horas_anuales || null,
         fecha_inicio || null,
         fecha_fin || null
       ]
@@ -296,6 +314,42 @@ router.post('/contratos', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar el contrato.' });
+  }
+});
+
+// PUT /api/admin/contratos/:id — Editar contrato existente
+router.put('/contratos/:id', async (req, res) => {
+  const {
+    centro_id, categoria_profesional, convenio,
+    tipo_contrato, tipo_jornada, horas_semanales, horas_anuales, fecha_inicio, fecha_fin, activo
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE contratos SET 
+         centro_id = $1, categoria_profesional = $2, convenio = $3,
+         tipo_contrato = $4, tipo_jornada = $5, horas_semanales = $6, 
+         horas_anuales = $7, fecha_inicio = $8, fecha_fin = $9, activo = $10
+       WHERE id = $11 RETURNING *`,
+      [
+        centro_id || null,
+        categoria_profesional || null,
+        convenio || null,
+        tipo_contrato || null,
+        tipo_jornada || null,
+        horas_semanales || null,
+        horas_anuales || null,
+        fecha_inicio || null,
+        fecha_fin || null,
+        activo === undefined ? true : activo,
+        req.params.id
+      ]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Contrato no encontrado.' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar el contrato.' });
   }
 });
 
@@ -424,6 +478,23 @@ router.delete('/licencias/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al eliminar la licencia.' });
+  }
+});
+
+// PUT /api/admin/licencias/:id — Editar licencia existente
+router.put('/licencias/:id', async (req, res) => {
+  const { anio, causa, fecha_inicio, fecha_fin } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE licencias_permisos SET anio = $1, causa = $2, fecha_inicio = $3, fecha_fin = $4
+       WHERE id = $5 RETURNING *`,
+      [anio, causa, fecha_inicio, fecha_fin, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Licencia no encontrada.' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar la licencia.' });
   }
 });
 

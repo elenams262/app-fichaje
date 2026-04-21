@@ -73,6 +73,7 @@ const API = (() => {
     // CONTRATOS (Admin)
     getContrato: (empleadoId) => request('GET', `/admin/contratos/${empleadoId}`),
     guardarContrato: (data) => request('POST', '/admin/contratos', data),
+    editarContrato: (id, data) => request('PUT', `/admin/contratos/${id}`, data),
     eliminarContrato: (id) => request('DELETE', `/admin/contratos/${id}`),
 
     // HORARIOS (Admin)
@@ -83,6 +84,7 @@ const API = (() => {
     // LICENCIAS (Admin)
     getLicencias: (empleadoId) => request('GET', `/admin/licencias/${empleadoId}`),
     crearLicencia: (data) => request('POST', '/admin/licencias', data),
+    editarLicencia: (id, data) => request('PUT', `/admin/licencias/${id}`, data),
     eliminarLicencia: (id) => request('DELETE', `/admin/licencias/${id}`),
 
     // FICHAJES (Admin)
