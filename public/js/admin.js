@@ -1407,10 +1407,31 @@ const Admin = (() => {
   // ============================================================
   // EXPORTACIÓN
   // ============================================================
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (!fichajesData || fichajesData.length === 0) {
       App.showToast('No hay datos para exportar. Aplica los filtros primero.', 'error'); return;
     }
+
+    const empId = document.getElementById('f-empleado').value;
+    let summaryRows = [];
+    if (empId) {
+      try {
+        const contratos = await API.getContrato(empId);
+        const ct = contratos.find(c => c.activo || !c.fecha_fin);
+        if (ct) {
+          const anuales = parseFloat(ct.horas_anuales || 0);
+          const realizadas = parseFloat(ct.horas_realizadas || 0);
+          const restantes = anuales - realizadas;
+          summaryRows = [
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', 'HORAS REQUERIDAS', anuales.toFixed(1)],
+            ['', '', '', '', '', '', 'REALIZADAS HASTA EL MOMENTO', realizadas.toFixed(1)],
+            ['', '', '', '', '', '', 'RESTA', restantes.toFixed(1)]
+          ];
+        }
+      } catch (e) { console.error('Error fetching summary for Excel:', e); }
+    }
+
     const headers = ['Empleado','DNI/NIE','Centro','Puesto','Tipo','Extra (min)','Fecha','Hora'];
     const rows = fichajesData.map(f => {
       const dt = new Date(f.timestamp);
@@ -1421,7 +1442,9 @@ const Admin = (() => {
         dt.toLocaleDateString('es-ES'), dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
       ];
     });
-    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+
+    const allRows = [headers, ...rows, ...summaryRows];
+    const csv = allRows.map(r => r.map(v => `"${v}"`).join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1430,10 +1453,34 @@ const Admin = (() => {
     App.showToast('Excel descargado', 'success');
   };
 
-  const exportarPDF = () => {
+  const exportarPDF = async () => {
     if (!fichajesData || fichajesData.length === 0) {
       App.showToast('No hay datos para exportar. Aplica los filtros primero.', 'error'); return;
     }
+
+    const empId = document.getElementById('f-empleado').value;
+    let summaryHtml = '';
+    if (empId) {
+      try {
+        const contratos = await API.getContrato(empId);
+        const ct = contratos.find(c => c.activo || !c.fecha_fin);
+        if (ct) {
+          const anuales = parseFloat(ct.horas_anuales || 0);
+          const realizadas = parseFloat(ct.horas_realizadas || 0);
+          const restantes = anuales - realizadas;
+          summaryHtml = `
+            <div style="margin-top:25px; border-top:2px solid #f59e0b; padding-top:10px; width:100%; display:flex; justify-content:flex-end;">
+              <table style="width:auto; min-width:300px; font-size:13px; border:none;">
+                <tr><td style="padding:4px; border:none; text-align:right;"><strong>HORAS REQUERIDAS:</strong></td><td style="padding:4px; border:none; text-align:right; font-weight:700;">${anuales.toFixed(1)}h</td></tr>
+                <tr><td style="padding:4px; border:none; text-align:right;"><strong>REALIZADAS HASTA EL MOMENTO:</strong></td><td style="padding:4px; border:none; text-align:right; font-weight:700; color:#f59e0b;">${realizadas.toFixed(1)}h</td></tr>
+                <tr style="border-top:1px solid #eee;"><td style="padding:4px; border:none; text-align:right;"><strong>RESTA:</strong></td><td style="padding:4px; border:none; text-align:right; font-weight:700; color:${restantes < 50 ? '#ef4444' : '#1a1a1a'};">${restantes.toFixed(1)}h</td></tr>
+              </table>
+            </div>
+          `;
+        }
+      } catch (e) { console.error('Error fetching summary for PDF:', e); }
+    }
+
     const head = `<html><head><meta charset="utf-8">
     <title>Fichajes MSG Gasóleos</title>
     <style>
@@ -1450,6 +1497,7 @@ const Admin = (() => {
     <table><thead><tr>
       <th>Empleado</th><th>DNI/NIE</th><th>Centro</th><th>Tipo</th><th>Extra</th><th>Fecha</th><th>Hora</th>
     </tr></thead><tbody>`;
+    
     const body = fichajesData.map(f => {
       const dt = new Date(f.timestamp);
       const color = f.tipo === 'entrada' ? '#10b981' : '#ef4444';
@@ -1463,7 +1511,8 @@ const Admin = (() => {
         <td>${dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</td>
       </tr>`;
     }).join('');
-    const html = head + body + '</tbody></table></body></html>';
+
+    const html = head + body + '</tbody></table>' + summaryHtml + '</body></html>';
     const w = window.open('','_blank');
     w.document.write(html); w.document.close();
     setTimeout(() => { w.print(); }, 500);
